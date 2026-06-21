@@ -11,6 +11,7 @@ import { useRoomAvatar, useRoomJoinRule, useRoomName } from '../../hooks/useRoom
 import { mDirectAtom } from '../../state/mDirectList';
 import { RoomAvatar, RoomIcon } from '../../components/room-avatar';
 import { General } from './general';
+import { ChatStylePage } from './chat-style';
 import { Members } from '../common-settings/members';
 import { EmojisStickers } from '../common-settings/emojis-stickers';
 import { Permissions } from './permissions';
@@ -31,6 +32,11 @@ const useRoomSettingsMenuItems = (): RoomSettingsMenuItem[] =>
         page: RoomSettingsPage.GeneralPage,
         name: 'General',
         icon: Icons.Setting,
+      },
+      {
+        page: RoomSettingsPage.ChatStylePage,
+        name: 'Chat Style',
+        icon: Icons.Photo,
       },
       {
         page: RoomSettingsPage.MembersPage,
@@ -96,7 +102,7 @@ export function RoomSettings({ initialPage, requestClose }: RoomSettingsProps) {
           <PageNav size="300">
             <PageNavHeader outlined={false}>
               <Box grow="Yes" gap="200">
-                <Avatar size="200" radii="300">
+                <Avatar size="200" radii="Pill">
                   <RoomAvatar
                     roomId={room.roomId}
                     src={avatarUrl}
@@ -155,6 +161,9 @@ export function RoomSettings({ initialPage, requestClose }: RoomSettingsProps) {
     >
       {activePage === RoomSettingsPage.GeneralPage && (
         <General requestClose={handlePageRequestClose} />
+      )}
+      {activePage === RoomSettingsPage.ChatStylePage && (
+        <ChatStylePage requestClose={handlePageRequestClose} />
       )}
       {activePage === RoomSettingsPage.MembersPage && (
         <Members requestClose={handlePageRequestClose} />

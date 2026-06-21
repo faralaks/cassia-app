@@ -1,5 +1,6 @@
 import React, { ReactNode, useEffect } from 'react';
 import { configClass, varsClass } from 'folds';
+import { useSetAtom } from 'jotai';
 import {
   DarkTheme,
   LightTheme,
@@ -10,6 +11,7 @@ import {
 } from '../hooks/useTheme';
 import { useSetting } from '../state/hooks/settings';
 import { settingsAtom } from '../state/settings';
+import { themeGroupAtom } from '../state/room/roomStyles';
 
 export function UnAuthRouteThemeManager() {
   const systemThemeKind = useSystemThemeKind();
@@ -31,6 +33,7 @@ export function UnAuthRouteThemeManager() {
 export function AuthRouteThemeManager({ children }: { children: ReactNode }) {
   const activeTheme = useActiveTheme();
   const [monochromeMode] = useSetting(settingsAtom, 'monochromeMode');
+  const setThemeGroup = useSetAtom(themeGroupAtom);
 
   useEffect(() => {
     document.body.className = '';
@@ -44,6 +47,12 @@ export function AuthRouteThemeManager({ children }: { children: ReactNode }) {
       document.body.style.filter = '';
     }
   }, [activeTheme, monochromeMode]);
+
+  // Keep the chat-style default group in sync with the active theme group, so
+  // chats without per-room overrides follow light vs dark defaults.
+  useEffect(() => {
+    setThemeGroup(activeTheme.kind === ThemeKind.Light ? 'light' : 'dark');
+  }, [activeTheme.kind, setThemeGroup]);
 
   return <ThemeContextProvider value={activeTheme}>{children}</ThemeContextProvider>;
 }
