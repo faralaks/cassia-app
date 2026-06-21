@@ -2,18 +2,20 @@
 
 A Telegram Desktop inspired Matrix client, forked from [Cinny](https://github.com/cinnyapp/cinny).
 
-This is a personal fork maintained for myself and a small group of friends. Most of the changes
-on top of upstream Cinny were written with Claude (Anthropic's AI assistant) and have not been
+This is a personal fork built to run against a self-hosted homeserver. Most of the changes on
+top of upstream Cinny were written with Claude (Anthropic's AI assistant) and have **not** been
 fully human-reviewed — use it at your own risk, no warranty is provided.
 
-The main goal is to have an instant messaging application that is easy on people and has a modern
-touch, closer to what Telegram Desktop feels like.
+The goal is an instant messaging application that is easy on people and has a modern touch,
+closer to what Telegram Desktop feels like. For a tour of what this fork changes, see
+[CASSIA.md](CASSIA.md).
 
-Huge thanks to [Ajay Bura](https://github.com/ajbura) and the Cinny contributors for the original
-project this fork is built on.
+Huge thanks to [Ajay Bura](https://github.com/ajbura) and the Cinny contributors for the
+original project this fork is built on.
 
 ## Getting started
 There is no public hosted instance — Cassia is meant to be self-hosted.
+
 ## Self-hosting
 To host Cassia on your own, clone this repo and build it yourself (see Local development below), or pull/build a docker image.
 
@@ -53,3 +55,9 @@ docker run -p 8080:80 cassia:latest
 ```
 
 This will forward your `localhost` port 8080 to the container's port 80. You can visit the app in your browser by navigating to `http://localhost:8080`.
+
+## Contributing
+
+This is a personal project, published mainly to comply with the upstream license. The chances of
+me reviewing or accepting pull requests are nearly zero — please don't be offended if an issue or
+PR goes unanswered. If you want changes, the intended path is to **fork it and DIY**.
