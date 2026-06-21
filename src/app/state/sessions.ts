@@ -35,22 +35,22 @@ export function setFallbackSession(
   userId: string,
   baseUrl: string
 ) {
-  localStorage.setItem('cinny_access_token', accessToken);
-  localStorage.setItem('cinny_device_id', deviceId);
-  localStorage.setItem('cinny_user_id', userId);
-  localStorage.setItem('cinny_hs_base_url', baseUrl);
+  localStorage.setItem('cassia_access_token', accessToken);
+  localStorage.setItem('cassia_device_id', deviceId);
+  localStorage.setItem('cassia_user_id', userId);
+  localStorage.setItem('cassia_hs_base_url', baseUrl);
 }
 export const removeFallbackSession = () => {
-  localStorage.removeItem('cinny_hs_base_url');
-  localStorage.removeItem('cinny_user_id');
-  localStorage.removeItem('cinny_device_id');
-  localStorage.removeItem('cinny_access_token');
+  localStorage.removeItem('cassia_hs_base_url');
+  localStorage.removeItem('cassia_user_id');
+  localStorage.removeItem('cassia_device_id');
+  localStorage.removeItem('cassia_access_token');
 };
 export const getFallbackSession = (): Session | undefined => {
-  const baseUrl = localStorage.getItem('cinny_hs_base_url');
-  const userId = localStorage.getItem('cinny_user_id');
-  const deviceId = localStorage.getItem('cinny_device_id');
-  const accessToken = localStorage.getItem('cinny_access_token');
+  const baseUrl = localStorage.getItem('cassia_hs_base_url');
+  const userId = localStorage.getItem('cassia_user_id');
+  const deviceId = localStorage.getItem('cassia_device_id');
+  const accessToken = localStorage.getItem('cassia_access_token');
 
   if (baseUrl && userId && deviceId && accessToken) {
     const session: Session = {

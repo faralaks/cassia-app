@@ -3,6 +3,7 @@ import { createClient, MatrixClient, IndexedDBStore, IndexedDBCryptoStore } from
 import { cryptoCallbacks } from './secretStorageKeys';
 import { clearNavToActivePathStore } from '../app/state/navToActivePath';
 import { pushSessionToSW } from '../sw-session';
+import { getLastUsedServer, setLastUsedServer } from '../app/hooks/useClientConfig';
 
 type Session = {
   baseUrl: string;
@@ -62,7 +63,9 @@ export const logoutClient = async (mx: MatrixClient) => {
     // ignore if failed to logout
   }
   await mx.clearStores();
+  const lastUsedServer = getLastUsedServer();
   window.localStorage.clear();
+  if (lastUsedServer) setLastUsedServer(lastUsedServer);
   window.location.reload();
 };
 
@@ -76,6 +79,8 @@ export const clearLoginData = async () => {
     }
   });
 
+  const lastUsedServer = getLastUsedServer();
   window.localStorage.clear();
+  if (lastUsedServer) setLastUsedServer(lastUsedServer);
   window.location.reload();
 };
