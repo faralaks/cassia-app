@@ -1,8 +1,10 @@
 import { IContent, MatrixClient, MsgType } from 'matrix-js-sdk';
 import to from 'await-to-js';
+import { EncryptedAttachmentInfo } from 'browser-encrypt-attachment';
 import {
   IThumbnailContent,
   MATRIX_BLUR_HASH_PROPERTY_NAME,
+  MATRIX_MSC1767_AUDIO_PROPERTY_NAME,
   MATRIX_SPOILER_PROPERTY_NAME,
 } from '../../../types/matrix/common';
 import {
@@ -136,6 +138,39 @@ export const getAudioMsgContent = (item: TUploadItem, mxc: string): IContent => 
       mimetype: file.type,
       size: file.size,
     },
+  };
+  if (encInfo) {
+    content.file = {
+      ...encInfo,
+      url: mxc,
+    };
+  } else {
+    content.url = mxc;
+  }
+  return content;
+};
+
+export const getVoiceMsgContent = (
+  mxc: string,
+  mimeType: string,
+  size: number,
+  durationMs: number,
+  waveform: number[],
+  encInfo?: EncryptedAttachmentInfo
+): IContent => {
+  const content: IContent = {
+    msgtype: MsgType.Audio,
+    body: 'Voice message',
+    info: {
+      mimetype: mimeType,
+      size,
+      duration: durationMs,
+    },
+    [MATRIX_MSC1767_AUDIO_PROPERTY_NAME]: {
+      duration: durationMs,
+      waveform,
+    },
+    'org.matrix.msc3245.voice': {},
   };
   if (encInfo) {
     content.file = {

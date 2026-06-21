@@ -8,7 +8,7 @@ import React, {
   useState,
 } from 'react';
 import { Box, Scroll, Text } from 'folds';
-import { Descendant, Editor, createEditor } from 'slate';
+import { Descendant, Editor, Element, Transforms, createEditor } from 'slate';
 import {
   Slate,
   Editable,
@@ -52,8 +52,27 @@ const withVoid = (editor: Editor): Editor => {
   return editor;
 };
 
+const withCustomNormalize = (editor: Editor): Editor => {
+  const { normalizeNode } = editor;
+
+  editor.normalizeNode = (entry) => {
+    const [node, path] = entry;
+
+    if (Element.isElement(node) && node.type === BlockType.Link && Editor.string(editor, path) === '') {
+      Transforms.unwrapNodes(editor, { at: path });
+      return;
+    }
+
+    normalizeNode(entry);
+  };
+
+  return editor;
+};
+
 export const useEditor = (): Editor => {
-  const [editor] = useState(() => withInline(withVoid(withReact(withHistory(createEditor())))));
+  const [editor] = useState(() =>
+    withInline(withVoid(withCustomNormalize(withReact(withHistory(createEditor())))))
+  );
   return editor;
 };
 
@@ -64,9 +83,11 @@ type CustomEditorProps = {
   bottom?: ReactNode;
   before?: ReactNode;
   after?: ReactNode;
+  replaceTextarea?: ReactNode;
   maxHeight?: string;
   editor: Editor;
   placeholder?: string;
+  style?: React.CSSProperties;
   onKeyDown?: KeyboardEventHandler;
   onKeyUp?: KeyboardEventHandler;
   onChange?: EditorChangeHandler;
@@ -80,9 +101,11 @@ export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
       bottom,
       before,
       after,
+      replaceTextarea,
       maxHeight = '50vh',
       editor,
       placeholder,
+      style,
       onKeyDown,
       onKeyUp,
       onChange,
@@ -119,7 +142,7 @@ export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
     );
 
     return (
-      <div className={css.Editor} ref={ref}>
+      <div className={css.Editor} style={style} ref={ref}>
         <Slate editor={editor} initialValue={initialValue} onChange={onChange}>
           {top}
           <Box alignItems="Start">
@@ -128,26 +151,28 @@ export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
                 {before}
               </Box>
             )}
-            <Scroll
-              className={css.EditorTextareaScroll}
-              variant="SurfaceVariant"
-              style={{ maxHeight }}
-              size="300"
-              visibility="Hover"
-              hideTrack
-            >
-              <Editable
-                data-editable-name={editableName}
-                className={css.EditorTextarea}
-                placeholder={placeholder}
-                renderPlaceholder={renderPlaceholder}
-                renderElement={renderElement}
-                renderLeaf={renderLeaf}
-                onKeyDown={handleKeydown}
-                onKeyUp={onKeyUp}
-                onPaste={onPaste}
-              />
-            </Scroll>
+            {replaceTextarea ?? (
+              <Scroll
+                className={css.EditorTextareaScroll}
+                variant="SurfaceVariant"
+                style={{ maxHeight }}
+                size="300"
+                visibility="Hover"
+                hideTrack
+              >
+                <Editable
+                  data-editable-name={editableName}
+                  className={css.EditorTextarea}
+                  placeholder={placeholder}
+                  renderPlaceholder={renderPlaceholder}
+                  renderElement={renderElement}
+                  renderLeaf={renderLeaf}
+                  onKeyDown={handleKeydown}
+                  onKeyUp={onKeyUp}
+                  onPaste={onPaste}
+                />
+              </Scroll>
+            )}
             {after && (
               <Box className={css.EditorOptions} alignItems="Center" gap="100" shrink="No">
                 {after}
