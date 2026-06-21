@@ -7,11 +7,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
+import { atom, useAtom, useAtomValue } from 'jotai';
 import { isKeyHotkey } from 'is-hotkey';
 import { EventType, IContent, MsgType, RelationType, Room } from 'matrix-js-sdk';
 import { ReactEditor } from 'slate-react';
-import { Transforms, Editor } from 'slate';
+import { Transforms, Editor, Range } from 'slate';
 import {
   Box,
   Dialog,
@@ -25,9 +25,12 @@ import {
   PopOut,
   Scroll,
   Text,
+  color,
   config,
   toRem,
 } from 'folds';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { getPopupMotionProps } from '../../components/popupMotion';
 
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import {
@@ -45,7 +48,10 @@ import {
   UserMentionAutocomplete,
   EmoticonAutocomplete,
   createEmoticonElement,
+  createLinkElement,
   moveCursor,
+  replaceWithElement,
+  selectInsertedLink,
   resetEditorHistory,
   customHtmlEqualsPlainText,
   trimCustomHtml,
@@ -75,6 +81,7 @@ import {
   roomIdToUploadItemsAtomFamily,
   roomUploadAtomFamily,
 } from '../../state/room/roomInputDrafts';
+import { dragDropPendingAtom } from '../../state/dragDropPending';
 import { UploadCardRenderer } from '../../components/upload-card';
 import {
   UploadBoard,
@@ -90,6 +97,7 @@ import {
 } from '../../state/upload';
 import { getImageUrlBlob, loadImageElement } from '../../utils/dom';
 import { safeFile } from '../../utils/mimeTypes';
+import { compressImageFile, isCompressibleImage } from '../../utils/imageCompression';
 import { fulfilledPromiseSettledResult } from '../../utils/common';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
@@ -98,6 +106,7 @@ import {
   getFileMsgContent,
   getImageMsgContent,
   getVideoMsgContent,
+  getVoiceMsgContent,
 } from './msgContent';
 import { getMemberDisplayName, getMentionContent, trimReplyFromBody } from '../../utils/room';
 import { CommandAutocomplete } from './CommandAutocomplete';
@@ -117,21 +126,33 @@ import { useTheme } from '../../hooks/useTheme';
 import { useRoomCreatorsTag } from '../../hooks/useRoomCreatorsTag';
 import { usePowerLevelTags } from '../../hooks/usePowerLevelTags';
 import { useComposingCheck } from '../../hooks/useComposingCheck';
+import { useVoiceRecorder } from '../../hooks/useVoiceRecorder';
+import { VoiceRecordingBar } from './VoiceRecordingBar';
+
+const emojiBoardTabAtom = atom<EmojiBoardTab>(EmojiBoardTab.Emoji);
 
 interface RoomInputProps {
   editor: Editor;
   fileDropContainerRef: RefObject<HTMLElement>;
   roomId: string;
   room: Room;
+  onDropZoneActiveChange?: (active: boolean) => void;
 }
 export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
-  ({ editor, fileDropContainerRef, roomId, room }, ref) => {
+  ({ editor, fileDropContainerRef, roomId, room, onDropZoneActiveChange }, ref) => {
     const mx = useMatrixClient();
     const useAuthentication = useMediaAuthentication();
+    const reduceMotion = useReducedMotion();
+    const [emojiOpen, setEmojiOpen] = useState(false);
+    const [emojiMounted, setEmojiMounted] = useState(false);
+    const [emojiTab, setEmojiTab] = useAtom(emojiBoardTabAtom);
     const [enterForNewline] = useSetting(settingsAtom, 'enterForNewline');
     const [isMarkdown] = useSetting(settingsAtom, 'isMarkdown');
     const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
     const [legacyUsernameColor] = useSetting(settingsAtom, 'legacyUsernameColor');
+    const [compressImages] = useSetting(settingsAtom, 'compressImages');
+    const [imageUploadLimitMB] = useSetting(settingsAtom, 'imageUploadLimitMB');
+    const [imageCompressQuality] = useSetting(settingsAtom, 'imageCompressQuality');
     const direct = useIsDirectRoom();
     const commands = useCommands(mx, room);
     const emojiBtnRef = useRef<HTMLButtonElement>(null);
@@ -180,11 +201,25 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       async (files: File[]) => {
         setUploadBoard(true);
         const safeFiles = files.map(safeFile);
+        const limitBytes = imageUploadLimitMB * 1024 * 1024;
+        const processedFiles = await Promise.all(
+          safeFiles.map(async (f) => {
+            if (!compressImages || !isCompressibleImage(f) || f.size <= limitBytes) return f;
+            try {
+              return await compressImageFile(f, {
+                quality: imageCompressQuality,
+                maxBytes: limitBytes,
+              });
+            } catch {
+              return f;
+            }
+          })
+        );
         const fileItems: TUploadItem[] = [];
 
         if (room.hasEncryptionStateEvent()) {
           const encryptFiles = fulfilledPromiseSettledResult(
-            await Promise.allSettled(safeFiles.map((f) => encryptFile(f)))
+            await Promise.allSettled(processedFiles.map((f) => encryptFile(f)))
           );
           encryptFiles.forEach((ef) =>
             fileItems.push({
@@ -195,7 +230,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             })
           );
         } else {
-          safeFiles.forEach((f) =>
+          processedFiles.forEach((f) =>
             fileItems.push({
               file: f,
               originalFile: f,
@@ -211,14 +246,59 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           item: fileItems,
         });
       },
-      [setSelectedFiles, room]
+      [setSelectedFiles, room, compressImages, imageUploadLimitMB, imageCompressQuality]
     );
     const pickFile = useFilePicker(handleFiles, true);
     const handlePaste = useFilePasteHandler(handleFiles);
+
+    const handleLinkPaste = useCallback(
+      (evt: React.ClipboardEvent): boolean => {
+        const { selection } = editor;
+        if (!selection || Range.isCollapsed(selection)) return false;
+
+        const text = evt.clipboardData.getData('text/plain').trim();
+        if (!/^https?:\/\/\S+$/i.test(text)) return false;
+
+        evt.preventDefault();
+        const selectedText = Editor.string(editor, selection);
+        const linkEl = createLinkElement(text, selectedText);
+        replaceWithElement(editor, selection, linkEl);
+        selectInsertedLink(editor, text);
+        ReactEditor.focus(editor);
+        return true;
+      },
+      [editor]
+    );
+
+    const handleEditorPaste: React.ClipboardEventHandler = useCallback(
+      (evt) => {
+        if (handleLinkPaste(evt)) return;
+        handlePaste(evt);
+      },
+      [handleLinkPaste, handlePaste]
+    );
     const dropZoneVisible = useFileDropZone(fileDropContainerRef, handleFiles);
+
+    useEffect(() => {
+      onDropZoneActiveChange?.(dropZoneVisible);
+    }, [dropZoneVisible, onDropZoneActiveChange]);
+
+    // Consume files queued by a sidebar nav-item drop for this room.
+    const [pendingDrop, setPendingDrop] = useAtom(dragDropPendingAtom);
+    useEffect(() => {
+      if (!pendingDrop || pendingDrop.roomId !== roomId) return;
+      setPendingDrop(null);
+      handleFiles(pendingDrop.files);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roomId, pendingDrop]);
+
     const [hideStickerBtn, setHideStickerBtn] = useState(document.body.clientWidth < 500);
 
     const isComposing = useComposingCheck();
+
+    const [isEmpty, setIsEmpty] = useState(true);
+    const voice = useVoiceRecorder();
+    const recording = voice.state === 'recording';
 
     useElementSizeObserver(
       useCallback(() => fileDropContainerRef.current, [fileDropContainerRef]),
@@ -264,6 +344,31 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         uploads.forEach((u) => roomUploadAtomFamily.remove(u));
       },
       [setSelectedFiles, selectedFiles]
+    );
+
+    const handleReplaceFile = useCallback(
+      async (fileItem: TUploadItem, newOriginalFile: File) => {
+        let replacement: TUploadItem;
+        if (room.hasEncryptionStateEvent()) {
+          const enc = await encryptFile(newOriginalFile);
+          replacement = {
+            file: enc.file,
+            originalFile: enc.originalFile,
+            encInfo: enc.encInfo,
+            metadata: fileItem.metadata,
+          };
+        } else {
+          replacement = {
+            file: newOriginalFile,
+            originalFile: newOriginalFile,
+            encInfo: undefined,
+            metadata: fileItem.metadata,
+          };
+        }
+        roomUploadAtomFamily.remove(fileItem.file);
+        setSelectedFiles({ type: 'REPLACE', item: fileItem, replacement });
+      },
+      [room, setSelectedFiles]
     );
 
     const handleCancelUpload = (uploads: Upload[]) => {
@@ -338,7 +443,14 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         return;
       }
 
-      if (plainText === '') return;
+      if (plainText === '') {
+        if (selectedFiles.length === 0) return;
+        resetEditor(editor);
+        resetEditorHistory(editor);
+        setReplyDraft(undefined);
+        sendTypingStatus(false);
+        return;
+      }
 
       const body = plainText;
       const formattedBody = customHtml;
@@ -377,7 +489,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       resetEditorHistory(editor);
       setReplyDraft(undefined);
       sendTypingStatus(false);
-    }, [mx, roomId, editor, replyDraft, sendTypingStatus, setReplyDraft, isMarkdown, commands]);
+    }, [mx, roomId, editor, replyDraft, sendTypingStatus, setReplyDraft, isMarkdown, commands, selectedFiles]);
 
     const handleKeyDown: KeyboardEventHandler = useCallback(
       (evt) => {
@@ -446,6 +558,44 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       });
     };
 
+    const handleEditorChange = useCallback(() => {
+      setIsEmpty(isEmptyEditor(editor));
+    }, [editor]);
+
+    const sendVoice = useCallback(async () => {
+      const result = await voice.stop();
+      if (!result) return;
+      const { blob, mimeType, durationMs, waveform } = result;
+      // ignore accidental taps that produce a sub-second clip
+      if (durationMs < 500 || blob.size === 0) return;
+
+      const encrypt = room.hasEncryptionStateEvent();
+      let uploadFile: TUploadContent = blob;
+      let encInfo: Awaited<ReturnType<typeof encryptFile>>['encInfo'] | undefined;
+      if (encrypt) {
+        const enc = await encryptFile(new File([blob], 'voice-message', { type: mimeType }));
+        uploadFile = enc.file;
+        encInfo = enc.encInfo;
+      }
+
+      const data = await mx.uploadContent(uploadFile, {
+        type: mimeType,
+        includeFilename: false,
+      });
+      const mxc = data?.content_uri;
+      if (!mxc) return;
+
+      const content = getVoiceMsgContent(
+        mxc,
+        mimeType,
+        blob.size,
+        Math.round(durationMs),
+        waveform,
+        encInfo
+      );
+      mx.sendMessage(roomId, content as any);
+    }, [voice, room, mx, roomId]);
+
     return (
       <div ref={ref}>
         {selectedFiles.length > 0 && (
@@ -474,6 +624,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                         fileItem={fileItem}
                         setMetadata={handleFileMetadata}
                         onRemove={handleRemoveUpload}
+                        onReplace={handleReplaceFile}
                       />
                     ))}
                 </UploadBoardContent>
@@ -481,29 +632,6 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             )}
           </UploadBoard>
         )}
-        <Overlay
-          open={dropZoneVisible}
-          backdrop={<OverlayBackdrop />}
-          style={{ pointerEvents: 'none' }}
-        >
-          <OverlayCenter>
-            <Dialog variant="Primary">
-              <Box
-                direction="Column"
-                justifyContent="Center"
-                alignItems="Center"
-                gap="500"
-                style={{ padding: toRem(60) }}
-              >
-                <Icon size="600" src={Icons.File} />
-                <Text size="H4" align="Center">
-                  {`Drop Files in "${room?.name || 'Room'}"`}
-                </Text>
-                <Text align="Center">Drag and drop files here or click for selection dialog</Text>
-              </Box>
-            </Dialog>
-          </OverlayCenter>
-        </Overlay>
         {autocompleteQuery?.prefix === AutocompletePrefix.RoomMention && (
           <RoomMentionAutocomplete
             roomId={roomId}
@@ -540,9 +668,21 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           editableName="RoomInput"
           editor={editor}
           placeholder="Send a message..."
+          style={{
+            backgroundColor: color.Background.Container,
+            borderRadius: 0,
+            boxShadow: 'none',
+            borderTop: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
+          }}
           onKeyDown={handleKeyDown}
           onKeyUp={handleKeyUp}
-          onPaste={handlePaste}
+          onChange={handleEditorChange}
+          onPaste={handleEditorPaste}
+          replaceTextarea={
+            recording ? (
+              <VoiceRecordingBar elapsed={voice.elapsed} levels={voice.levels} />
+            ) : undefined
+          }
           top={
             replyDraft && (
               <div>
@@ -583,104 +723,148 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             )
           }
           before={
-            <IconButton
-              onClick={() => pickFile('*')}
-              variant="SurfaceVariant"
-              size="300"
-              radii="300"
-            >
-              <Icon src={Icons.PlusCircle} />
-            </IconButton>
-          }
-          after={
-            <>
+            recording ? (
               <IconButton
+                onClick={voice.cancel}
                 variant="SurfaceVariant"
+                fill="None"
                 size="300"
                 radii="300"
-                onClick={() => setToolbar(!toolbar)}
+                aria-label="Delete recording"
               >
-                <Icon src={toolbar ? Icons.AlphabetUnderline : Icons.Alphabet} />
+                <Icon src={Icons.Delete} />
               </IconButton>
-              <UseStateProvider initial={undefined}>
-                {(emojiBoardTab: EmojiBoardTab | undefined, setEmojiBoardTab) => (
-                  <PopOut
-                    offset={16}
-                    alignOffset={-44}
-                    position="Top"
-                    align="End"
-                    anchor={
-                      emojiBoardTab === undefined
-                        ? undefined
-                        : emojiBtnRef.current?.getBoundingClientRect() ?? undefined
-                    }
-                    content={
-                      <EmojiBoard
-                        tab={emojiBoardTab}
-                        onTabChange={setEmojiBoardTab}
-                        imagePackRooms={imagePackRooms}
-                        returnFocusOnDeactivate={false}
-                        onEmojiSelect={handleEmoticonSelect}
-                        onCustomEmojiSelect={handleEmoticonSelect}
-                        onStickerSelect={handleStickerSelect}
-                        requestClose={() => {
-                          setEmojiBoardTab((t) => {
-                            if (t) {
-                              if (!mobileOrTablet()) ReactEditor.focus(editor);
-                              return undefined;
-                            }
-                            return t;
-                          });
-                        }}
-                      />
-                    }
-                  >
-                    {!hideStickerBtn && (
-                      <IconButton
-                        aria-pressed={emojiBoardTab === EmojiBoardTab.Sticker}
-                        onClick={() => setEmojiBoardTab(EmojiBoardTab.Sticker)}
-                        variant="SurfaceVariant"
-                        size="300"
-                        radii="300"
-                      >
-                        <Icon
-                          src={Icons.Sticker}
-                          filled={emojiBoardTab === EmojiBoardTab.Sticker}
-                        />
-                      </IconButton>
-                    )}
-                    <IconButton
-                      ref={emojiBtnRef}
-                      aria-pressed={
-                        hideStickerBtn ? !!emojiBoardTab : emojiBoardTab === EmojiBoardTab.Emoji
-                      }
-                      onClick={() => setEmojiBoardTab(EmojiBoardTab.Emoji)}
-                      variant="SurfaceVariant"
-                      size="300"
-                      radii="300"
-                    >
-                      <Icon
-                        src={Icons.Smile}
-                        filled={
-                          hideStickerBtn ? !!emojiBoardTab : emojiBoardTab === EmojiBoardTab.Emoji
-                        }
-                      />
-                    </IconButton>
-                  </PopOut>
-                )}
-              </UseStateProvider>
-              <IconButton onClick={submit} variant="SurfaceVariant" size="300" radii="300">
+            ) : (
+              <IconButton
+                onClick={() => pickFile('*')}
+                variant="SurfaceVariant"
+                fill="None"
+                size="300"
+                radii="300"
+              >
+                <Icon src={Icons.PlusCircle} />
+              </IconButton>
+            )
+          }
+          after={
+            recording ? (
+              <IconButton
+                onClick={sendVoice}
+                variant="SurfaceVariant"
+                fill="None"
+                size="300"
+                radii="300"
+                aria-label="Send voice message"
+              >
                 <Icon src={Icons.Send} />
               </IconButton>
-            </>
+            ) : (
+              <>
+                <IconButton
+                  variant="SurfaceVariant"
+                  fill="None"
+                  size="300"
+                  radii="300"
+                  onClick={() => setToolbar(!toolbar)}
+                >
+                <Icon src={toolbar ? Icons.AlphabetUnderline : Icons.Alphabet} />
+              </IconButton>
+              <PopOut
+                offset={16}
+                alignOffset={-44}
+                position="Top"
+                align="End"
+                anchor={
+                  emojiMounted
+                    ? emojiBtnRef.current?.getBoundingClientRect() ?? undefined
+                    : undefined
+                }
+                content={
+                  <AnimatePresence onExitComplete={() => setEmojiMounted(false)}>
+                    {emojiOpen && (
+                      <motion.div
+                        key="emoji-board"
+                        {...getPopupMotionProps(reduceMotion)}
+                        style={{ transformOrigin: 'bottom right' }}
+                      >
+                        <EmojiBoard
+                          tab={emojiTab}
+                          onTabChange={setEmojiTab}
+                          imagePackRooms={imagePackRooms}
+                          returnFocusOnDeactivate={false}
+                          onEmojiSelect={handleEmoticonSelect}
+                          onCustomEmojiSelect={handleEmoticonSelect}
+                          onStickerSelect={handleStickerSelect}
+                          requestClose={() => {
+                            setEmojiOpen(false);
+                            if (!mobileOrTablet()) ReactEditor.focus(editor);
+                          }}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                }
+              >
+                <IconButton
+                  ref={emojiBtnRef}
+                  aria-pressed={emojiOpen}
+                  onClick={() => {
+                    if (emojiOpen) {
+                      setEmojiOpen(false);
+                    } else {
+                      setEmojiMounted(true);
+                      setEmojiOpen(true);
+                    }
+                  }}
+                  variant="SurfaceVariant"
+                  fill="None"
+                  size="300"
+                  radii="300"
+                >
+                  <Icon src={Icons.Smile} filled={emojiOpen} />
+                </IconButton>
+              </PopOut>
+              {isEmpty && selectedFiles.length === 0 ? (
+                <IconButton
+                  onClick={() => voice.start()}
+                  variant="SurfaceVariant"
+                  fill="None"
+                  size="300"
+                  radii="300"
+                  aria-label="Record voice message"
+                >
+                  <Icon src={Icons.Mic} />
+                </IconButton>
+              ) : (
+                <IconButton
+                  onClick={submit}
+                  variant="SurfaceVariant"
+                  fill="None"
+                  size="300"
+                  radii="300"
+                >
+                  <Icon src={Icons.Send} />
+                </IconButton>
+              )}
+              </>
+            )
           }
           bottom={
-            toolbar && (
-              <div>
+            <AnimatePresence initial={false}>
+              {toolbar && (
+                <motion.div
+                  key="editor-toolbar"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.15, ease: 'easeOut' }}
+                  style={{ overflow: 'hidden' }}
+                >
                 <Line variant="SurfaceVariant" size="300" />
                 <Toolbar />
-              </div>
-            )
+                </motion.div>
+              )}
+            </AnimatePresence>
           }
         />
       </div>

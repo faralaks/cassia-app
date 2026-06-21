@@ -1,4 +1,4 @@
-import { BasePoint, BaseRange, Editor, Element, Point, Range, Text, Transforms } from 'slate';
+import { BasePoint, BaseRange, Editor, Element, Path, Point, Range, Text, Transforms } from 'slate';
 import { BlockType, MarkType } from './types';
 import {
   CommandElement,
@@ -199,6 +199,30 @@ export const replaceWithElement = (editor: Editor, selectRange: BaseRange, eleme
   Transforms.collapse(editor, {
     edge: 'end',
   });
+};
+
+export const selectInsertedLink = (editor: Editor, href: string): boolean => {
+  const { selection } = editor;
+  if (!selection) return false;
+  const cursor = Range.start(selection);
+
+  const matches = Array.from(
+    Editor.nodes<LinkElement>(editor, {
+      at: [],
+      match: (n) => Element.isElement(n) && n.type === BlockType.Link && n.href === href,
+    })
+  );
+
+  const found = matches.find(([, path]) => {
+    if (Path.equals(cursor.path, [...path, 0])) return true;
+    if (cursor.offset === 0 && Path.equals(cursor.path, Path.next(path))) return true;
+    return false;
+  });
+
+  if (!found) return false;
+  const [, path] = found;
+  Transforms.select(editor, Editor.range(editor, path));
+  return true;
 };
 
 export const moveCursor = (editor: Editor, withSpace?: boolean) => {

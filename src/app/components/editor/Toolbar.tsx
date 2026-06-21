@@ -2,11 +2,13 @@ import FocusTrap from 'focus-trap-react';
 import {
   Badge,
   Box,
+  Button,
   config,
   Icon,
   IconButton,
   Icons,
   IconSrc,
+  Input,
   Line,
   Menu,
   PopOut,
@@ -17,14 +19,19 @@ import {
   TooltipProvider,
   toRem,
 } from 'folds';
-import React, { MouseEventHandler, ReactNode, useState } from 'react';
+import React, { FormEventHandler, MouseEventHandler, ReactNode, useState } from 'react';
+import { BaseRange, Editor, Element, Node, Path, Range, Transforms } from 'slate';
 import { ReactEditor, useSlate } from 'slate-react';
+import { LinkElement } from './slate';
 import {
+  createLinkElement,
   headingLevel,
   isAnyMarkActive,
   isBlockActive,
   isMarkActive,
+  moveCursor,
   removeAllMark,
+  replaceWithElement,
   toggleBlock,
   toggleMark,
 } from './utils';
@@ -74,6 +81,7 @@ export function MarkButton({ format, icon, tooltip }: MarkButtonProps) {
         <IconButton
           ref={triggerRef}
           variant="SurfaceVariant"
+          fill="None"
           onClick={handleClick}
           aria-pressed={isMarkActive(editor, format)}
           size="400"
@@ -106,6 +114,7 @@ export function BlockButton({ format, icon, tooltip }: BlockButtonProps) {
         <IconButton
           ref={triggerRef}
           variant="SurfaceVariant"
+          fill="None"
           onClick={handleClick}
           aria-pressed={isBlockActive(editor, format)}
           size="400"
@@ -210,6 +219,7 @@ export function HeadingBlockButton() {
       <IconButton
         style={{ width: 'unset' }}
         variant="SurfaceVariant"
+        fill="None"
         onClick={handleMenuOpen}
         aria-pressed={isActive}
         size="400"
@@ -218,6 +228,161 @@ export function HeadingBlockButton() {
         <Icon size="200" src={level ? Icons[`Heading${level}`] : Icons.Heading1} />
         <Icon size="200" src={isActive ? Icons.Cross : Icons.ChevronBottom} />
       </IconButton>
+    </PopOut>
+  );
+}
+
+const getActiveLink = (editor: Editor): [LinkElement, Path] | undefined => {
+  const { selection } = editor;
+  if (!selection) return undefined;
+
+  const matches = Array.from(
+    Editor.nodes<LinkElement>(editor, {
+      at: selection,
+      match: (n) => Element.isElement(n) && n.type === BlockType.Link,
+    })
+  );
+  if (matches.length !== 1) return undefined;
+
+  const [node, path] = matches[0];
+  const linkText = Node.string(node);
+  const selectedText = Editor.string(editor, selection);
+
+  if (!linkText || !selectedText.includes(linkText)) return undefined;
+  return [node, path];
+};
+
+export function LinkButton() {
+  const editor = useSlate();
+  const disableInline = isBlockActive(editor, BlockType.CodeBlock);
+  const [anchor, setAnchor] = useState<RectCords>();
+  const [selectionRange, setSelectionRange] = useState<BaseRange>();
+  const [linkPath, setLinkPath] = useState<Path>();
+
+  const activeLink = getActiveLink(editor);
+
+  const handleMenuOpen: MouseEventHandler<HTMLButtonElement> = (evt) => {
+    const link = getActiveLink(editor);
+    if (link) {
+      const [, path] = link;
+      setLinkPath(path);
+      setSelectionRange(undefined);
+    } else {
+      setLinkPath(undefined);
+      setSelectionRange(editor.selection ?? undefined);
+    }
+    setAnchor(evt.currentTarget.getBoundingClientRect());
+  };
+
+  const closeMenu = () => {
+    setAnchor(undefined);
+    setLinkPath(undefined);
+    setSelectionRange(undefined);
+  };
+
+  const handleSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
+    evt.preventDefault();
+    const target = evt.target as HTMLFormElement;
+    const urlInput = target.linkUrlInput as HTMLInputElement;
+    let href = urlInput.value.trim();
+    if (!href) return;
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+      href = `https://${href}`;
+    }
+
+    if (linkPath) {
+      Transforms.setNodes<LinkElement>(editor, { href }, { at: linkPath });
+    } else {
+      const range = selectionRange;
+      const text = range && !Range.isCollapsed(range) ? Editor.string(editor, range) : href;
+      const linkEl = createLinkElement(href, text);
+
+      if (range) {
+        replaceWithElement(editor, range, linkEl);
+      } else {
+        Transforms.insertNodes(editor, linkEl);
+        Transforms.collapse(editor, { edge: 'end' });
+      }
+      moveCursor(editor, true);
+    }
+
+    closeMenu();
+    ReactEditor.focus(editor);
+  };
+
+  const handleRemove = () => {
+    if (linkPath) {
+      Transforms.unwrapNodes(editor, {
+        at: linkPath,
+        match: (n) => Element.isElement(n) && n.type === BlockType.Link,
+      });
+    }
+    closeMenu();
+    ReactEditor.focus(editor);
+  };
+
+  return (
+    <PopOut
+      anchor={anchor}
+      offset={5}
+      position="Top"
+      content={
+        <FocusTrap
+          focusTrapOptions={{
+            initialFocus: false,
+            onDeactivate: closeMenu,
+            clickOutsideDeactivates: true,
+            escapeDeactivates: stopPropagation,
+          }}
+        >
+          <Menu style={{ padding: config.space.S200 }}>
+            <Box as="form" onSubmit={handleSubmit} gap="200" alignItems="Center">
+              <Input
+                name="linkUrlInput"
+                size="300"
+                variant="Background"
+                placeholder="example.com"
+                defaultValue={linkPath ? activeLink?.[0].href : undefined}
+                style={{ width: toRem(200) }}
+                autoFocus
+                required
+              />
+              {linkPath && (
+                <Button
+                  type="button"
+                  variant="Critical"
+                  fill="Soft"
+                  size="300"
+                  radii="300"
+                  onClick={handleRemove}
+                >
+                  <Text size="B300">Remove</Text>
+                </Button>
+              )}
+              <Button type="submit" variant="Primary" size="300" radii="300">
+                <Text size="B300">{linkPath ? 'Save' : 'Add Link'}</Text>
+              </Button>
+            </Box>
+          </Menu>
+        </FocusTrap>
+      }
+    >
+      <TooltipProvider tooltip={<BtnTooltip text="Link" />} delay={500}>
+        {(triggerRef) => (
+          <IconButton
+            ref={triggerRef}
+            variant="SurfaceVariant"
+            fill="None"
+            onClick={handleMenuOpen}
+            aria-pressed={!!activeLink}
+            size="400"
+            radii="300"
+            disabled={disableInline}
+          >
+            <Icon size="200" src={Icons.Link} filled={!!activeLink} />
+          </IconButton>
+        )}
+      </TooltipProvider>
     </PopOut>
   );
 }
@@ -241,6 +406,7 @@ export function ExitFormatting({ tooltip }: ExitFormattingProps) {
         <IconButton
           ref={triggerRef}
           variant="SurfaceVariant"
+          fill="None"
           onClick={handleClick}
           size="400"
           radii="300"
@@ -298,6 +464,7 @@ export function Toolbar() {
                 icon={Icons.EyeBlind}
                 tooltip={<BtnTooltip text="Spoiler" shortCode={`${modKey} + H`} />}
               />
+              <LinkButton />
             </Box>
             <Line variant="SurfaceVariant" direction="Vertical" style={{ height: toRem(12) }} />
           </>
@@ -346,6 +513,7 @@ export function Toolbar() {
                 <IconButton
                   ref={triggerRef}
                   variant="SurfaceVariant"
+                  fill="None"
                   onClick={() => setIsMarkdown(!isMarkdown)}
                   aria-pressed={isMarkdown}
                   size="300"

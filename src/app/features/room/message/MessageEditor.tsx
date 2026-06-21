@@ -19,7 +19,7 @@ import {
   as,
   config,
 } from 'folds';
-import { Editor, Transforms } from 'slate';
+import { Editor, Range, Transforms } from 'slate';
 import { ReactEditor } from 'slate-react';
 import { IContent, IMentions, MatrixEvent, RelationType, Room } from 'matrix-js-sdk';
 import { isKeyHotkey } from 'is-hotkey';
@@ -33,12 +33,15 @@ import {
   Toolbar,
   UserMentionAutocomplete,
   createEmoticonElement,
+  createLinkElement,
   customHtmlEqualsPlainText,
   getAutocompleteQuery,
   getPrevWorldRange,
   htmlToEditorInput,
   moveCursor,
   plainToEditorInput,
+  replaceWithElement,
+  selectInsertedLink,
   toMatrixCustomHTML,
   toPlainText,
   trimCustomHtml,
@@ -51,7 +54,7 @@ import { UseStateProvider } from '../../../components/UseStateProvider';
 import { EmojiBoard } from '../../../components/emoji-board';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
-import { getEditedEvent, getMentionContent, trimReplyFromFormattedBody } from '../../../utils/room';
+import { getEditedEvent, getMentionContent, trimReplyFromFormattedBody, canEditEvent, getPrevEditableEvt } from '../../../utils/room';
 import { mobileOrTablet } from '../../../utils/user-agent';
 import { useComposingCheck } from '../../../hooks/useComposingCheck';
 
@@ -61,9 +64,10 @@ type MessageEditorProps = {
   mEvent: MatrixEvent;
   imagePackRooms?: Room[];
   onCancel: () => void;
+  onEdit?: (eventId: string) => void;
 };
 export const MessageEditor = as<'div', MessageEditorProps>(
-  ({ room, roomId, mEvent, imagePackRooms, onCancel, ...props }, ref) => {
+  ({ room, roomId, mEvent, imagePackRooms, onCancel, onEdit, ...props }, ref) => {
     const mx = useMatrixClient();
     const editor = useEditor();
     const [enterForNewline] = useSetting(settingsAtom, 'enterForNewline');
@@ -153,7 +157,7 @@ export const MessageEditor = as<'div', MessageEditorProps>(
           },
         };
 
-        return mx.sendMessage(roomId, content);
+        return mx.sendMessage(roomId, content as any);
       }, [mx, editor, roomId, mEvent, isMarkdown, getPrevBodyAndFormattedBody])
     );
 
@@ -176,8 +180,24 @@ export const MessageEditor = as<'div', MessageEditorProps>(
           evt.preventDefault();
           onCancel();
         }
+        // At the very start of the editor, Arrow Up hops to editing the
+        // previous editable message (discarding this unsaved edit).
+        if (isKeyHotkey('arrowup', evt) && onEdit) {
+          const { selection } = editor;
+          if (selection && Range.isCollapsed(selection) && Editor.isStart(editor, selection.anchor, [])) {
+            const evtId = mEvent.getId();
+            const timeline = (evtId && room.getTimelineForEvent(evtId)) || room.getLiveTimeline();
+            const prevId = evtId
+              ? getPrevEditableEvt(timeline, evtId, (e) => canEditEvent(mx, e))?.getId()
+              : undefined;
+            if (prevId) {
+              evt.preventDefault();
+              onEdit(prevId);
+            }
+          }
+        }
       },
-      [onCancel, handleSave, enterForNewline, isComposing]
+      [onCancel, handleSave, enterForNewline, isComposing, onEdit, editor, mEvent, room, mx]
     );
 
     const handleKeyUp: KeyboardEventHandler = useCallback(
@@ -200,6 +220,24 @@ export const MessageEditor = as<'div', MessageEditorProps>(
       ReactEditor.focus(editor);
       setAutocompleteQuery(undefined);
     }, [editor]);
+
+    const handlePaste: React.ClipboardEventHandler = useCallback(
+      (evt) => {
+        const { selection } = editor;
+        if (!selection || Range.isCollapsed(selection)) return;
+
+        const text = evt.clipboardData.getData('text/plain').trim();
+        if (!/^https?:\/\/\S+$/i.test(text)) return;
+
+        evt.preventDefault();
+        const selectedText = Editor.string(editor, selection);
+        const linkEl = createLinkElement(text, selectedText);
+        replaceWithElement(editor, selection, linkEl);
+        selectInsertedLink(editor, text);
+        ReactEditor.focus(editor);
+      },
+      [editor]
+    );
 
     const handleEmoticonSelect = (key: string, shortcode: string) => {
       editor.insertNode(createEmoticonElement(key, shortcode));
@@ -260,6 +298,7 @@ export const MessageEditor = as<'div', MessageEditorProps>(
           placeholder="Edit message..."
           onKeyDown={handleKeyDown}
           onKeyUp={handleKeyUp}
+          onPaste={handlePaste}
           bottom={
             <>
               <Box
