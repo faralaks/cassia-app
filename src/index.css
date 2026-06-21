@@ -135,3 +135,20 @@ li p::before {
   content: '';
   display: inline-block;
 }
+
+/* Animate folds Switch toggles (no transition by default → instant snap).
+   Targets the stable [role="switch"] button + its thumb span. The track fades
+   colour/box-shadow/opacity; the thumb glides its transform + size. */
+button[role='switch'] {
+  transition: background-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+button[role='switch'] > span {
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.2s ease,
+    height 0.2s ease, background-color 0.18s ease, color 0.18s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  button[role='switch'],
+  button[role='switch'] > span {
+    transition: none;
+  }
+}

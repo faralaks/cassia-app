@@ -1,6 +1,22 @@
 import { createTheme } from '@vanilla-extract/css';
 import { color } from 'folds';
 
+// Primary-only override for folds' built-in light theme, so the "Light" theme
+// gets the same green accent as Silver. Append this class after `lightTheme`
+// (later class wins) — see LightTheme in hooks/useTheme.ts.
+export const lightPrimaryGreen = createTheme(color.Primary, {
+  Main: '#2E7D32',
+  MainHover: '#296F2D',
+  MainActive: '#26682A',
+  MainLine: '#246227',
+  OnMain: '#FFFFFF',
+  Container: '#CBE3CC',
+  ContainerHover: '#BFDCC1',
+  ContainerActive: '#B3D5B5',
+  ContainerLine: '#A7CEAA',
+  OnContainer: '#10380F',
+});
+
 export const silverTheme = createTheme(color, {
   Background: {
     Container: '#DEDEDE',
@@ -27,16 +43,16 @@ export const silverTheme = createTheme(color, {
   },
 
   Primary: {
-    Main: '#1245A8',
-    MainHover: '#103E97',
-    MainActive: '#0F3B8F',
-    MainLine: '#0E3786',
+    Main: '#2E7D32',
+    MainHover: '#296F2D',
+    MainActive: '#26682A',
+    MainLine: '#246227',
     OnMain: '#FFFFFF',
-    Container: '#C4D0E9',
-    ContainerHover: '#B8C7E5',
-    ContainerActive: '#ACBEE1',
-    ContainerLine: '#A0B5DC',
-    OnContainer: '#0D3076',
+    Container: '#CBE3CC',
+    ContainerHover: '#BFDCC1',
+    ContainerActive: '#B3D5B5',
+    ContainerLine: '#A7CEAA',
+    OnContainer: '#10380F',
   },
 
   Secondary: {
@@ -124,16 +140,16 @@ const darkThemeData = {
   },
 
   Primary: {
-    Main: '#BDB6EC',
-    MainHover: '#B2AAE9',
-    MainActive: '#ADA3E8',
-    MainLine: '#A79DE6',
-    OnMain: '#2C2843',
-    Container: '#413C65',
-    ContainerHover: '#494370',
-    ContainerActive: '#50497B',
-    ContainerLine: '#575086',
-    OnContainer: '#E3E1F7',
+    Main: '#2E7D32',
+    MainHover: '#296F2D',
+    MainActive: '#26682A',
+    MainLine: '#246227',
+    OnMain: '#FFFFFF',
+    Container: '#27451F',
+    ContainerHover: '#2D4F24',
+    ContainerActive: '#345829',
+    ContainerLine: '#3B622E',
+    OnContainer: '#CDE9C5',
   },
 
   Secondary: {

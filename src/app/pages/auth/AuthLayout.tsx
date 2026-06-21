@@ -16,11 +16,13 @@ import * as PatternsCss from '../../styles/Patterns.css';
 import {
   clientAllowedServer,
   clientDefaultServer,
+  clientServerList,
+  setLastUsedServer,
   useClientConfig,
 } from '../../hooks/useClientConfig';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { LOGIN_PATH, REGISTER_PATH, RESET_PASSWORD_PATH } from '../paths';
-import CinnySVG from '../../../../public/res/svg/cinny.svg';
+import CinnySVG from '../../../../public/res/logo.png';
 import { ServerPicker } from './ServerPicker';
 import { AutoDiscoveryAction, autoDiscovery } from '../../cs-api';
 import { SpecVersionsLoader } from '../../components/SpecVersionsLoader';
@@ -122,6 +124,12 @@ export function AuthLayout() {
   const [autoDiscoveryError, autoDiscoveryInfo] =
     discoveryState.status === AsyncStatus.Success ? discoveryState.data.response : [];
 
+  useEffect(() => {
+    if (discoveryState.status === AsyncStatus.Success && autoDiscoveryInfo) {
+      setLastUsedServer(discoveryState.data.serverName);
+    }
+  }, [discoveryState, autoDiscoveryInfo]);
+
   return (
     <Scroll variant="Background" visibility="Hover" size="300" hideTrack>
       <Box
@@ -134,8 +142,8 @@ export function AuthLayout() {
         <Box direction="Column" className={css.AuthCard}>
           <Header className={css.AuthHeader} size="600" variant="Surface">
             <Box grow="Yes" direction="Row" gap="300" alignItems="Center">
-              <img className={css.AuthLogo} src={CinnySVG} alt="Cinny Logo" />
-              <Text size="H3">Cinny</Text>
+              <img className={css.AuthLogo} src={CinnySVG} alt="Cassia Logo" />
+              <Text size="H3">Cassia</Text>
             </Box>
           </Header>
           <Box className={css.AuthCardContent} direction="Column">
@@ -145,7 +153,7 @@ export function AuthLayout() {
               </Text>
               <ServerPicker
                 server={server}
-                serverList={clientConfig.homeserverList ?? []}
+                serverList={clientServerList(clientConfig)}
                 allowCustomServer={clientConfig.allowCustomHomeservers}
                 onServerChange={selectServer}
               />

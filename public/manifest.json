@@ -1,7 +1,7 @@
 {
-  "name": "Cinny",
-  "short_name": "Cinny",
-  "description": "Yet another matrix client",
+  "name": "Cassia",
+  "short_name": "Cassia",
+  "description": "A Telegram Desktop inspired Matrix client, forked from Cinny",
   "dir": "auto",
   "lang": "en-US",
   "display": "standalone",
