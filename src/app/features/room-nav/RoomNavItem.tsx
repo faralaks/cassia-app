@@ -1,4 +1,4 @@
-import React, { MouseEventHandler, forwardRef, useState } from 'react';
+import React, { MouseEventHandler, forwardRef, useRef, useState } from 'react';
 import { Room } from 'matrix-js-sdk';
 import {
   Avatar,
@@ -20,6 +20,7 @@ import {
 import { useFocusWithin, useHover } from 'react-aria';
 import FocusTrap from 'focus-trap-react';
 import { useAtom, useAtomValue } from 'jotai';
+import { useNavigate } from 'react-router-dom';
 import { NavItem, NavItemContent, NavItemOptions, NavLink } from '../../components/nav';
 import { UnreadBadge, UnreadBadgeCenter } from '../../components/unread-badge';
 import { RoomAvatar, RoomIcon } from '../../components/room-avatar';
@@ -61,6 +62,9 @@ import { useAutoDiscoveryInfo } from '../../hooks/useAutoDiscoveryInfo';
 import { livekitSupport } from '../../hooks/useLivekitSupport';
 import { StateEvent } from '../../../types/matrix/room';
 import { webRTCSupported } from '../../utils/rtc';
+import { useIsDraggingFiles } from '../../hooks/useFileDrop';
+import { dragDropPendingAtom } from '../../state/dragDropPending';
+import { getDataTransferFiles } from '../../utils/dom';
 
 type RoomNavItemMenuProps = {
   room: Room;
@@ -237,6 +241,19 @@ function CallChatToggle() {
   );
 }
 
+function formatRoomTime(ts: number): string {
+  const now = new Date();
+  const date = new Date(ts);
+  const sameDay =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+  if (sameDay) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const daysDiff = (now.getTime() - ts) / (1000 * 60 * 60 * 24);
+  if (daysDiff < 7) return date.toLocaleDateString([], { weekday: 'short' });
+  return date.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+}
+
 type RoomNavItemProps = {
   room: Room;
   selected: boolean;
@@ -244,18 +261,22 @@ type RoomNavItemProps = {
   notificationMode?: RoomNotificationMode;
   showAvatar?: boolean;
   direct?: boolean;
+  showPreview?: boolean;
+  compact?: boolean;
 };
 export function RoomNavItem({
   room,
   selected,
   showAvatar,
   direct,
+  showPreview,
+  compact,
   notificationMode,
   linkPath,
 }: RoomNavItemProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
-  const [hover, setHover] = useState(false);
+  const [, setHover] = useState(false);
   const { hoverProps } = useHover({ onHoverChange: setHover });
   const { focusWithinProps } = useFocusWithin({ onFocusWithinChange: setHover });
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
@@ -263,6 +284,36 @@ export function RoomNavItem({
   const typingMember = useRoomTypingMember(room.roomId).filter(
     (receipt) => receipt.userId !== mx.getUserId()
   );
+
+  const navigate = useNavigate();
+  const isDraggingFiles = useIsDraggingFiles();
+  const [, setPendingDrop] = useAtom(dragDropPendingAtom);
+  const dragCounter = useRef(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleNavItemDragEnter = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    dragCounter.current += 1;
+    if (dragCounter.current === 1) setIsDragOver(true);
+  };
+  const handleNavItemDragOver = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+  };
+  const handleNavItemDragLeave = () => {
+    dragCounter.current = Math.max(0, dragCounter.current - 1);
+    if (dragCounter.current === 0) setIsDragOver(false);
+  };
+  const handleNavItemDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setIsDragOver(false);
+    const files = getDataTransferFiles(e.dataTransfer);
+    if (!files || files.length === 0) return;
+    setPendingDrop({ roomId: room.roomId, files });
+    navigate(linkPath);
+  };
 
   const roomName = useRoomName(room);
 
@@ -276,11 +327,23 @@ export function RoomNavItem({
     });
   };
 
+  // WebKit/Safari selects the word under the cursor on right-click even with
+  // `user-select: none`. Suppress the default selection on the secondary button
+  // (and macOS ctrl+click) so the context menu opens without highlighting text.
+  const handleSelectGuardMouseDown: MouseEventHandler<HTMLElement> = (evt) => {
+    if (evt.button === 2 || (evt.button === 0 && evt.ctrlKey)) {
+      evt.preventDefault();
+    }
+  };
+
   const handleOpenMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
     setMenuAnchor(evt.currentTarget.getBoundingClientRect());
   };
 
-  const optionsVisible = hover || !!menuAnchor;
+  const optionsVisible = !!menuAnchor;
+  const dmMemberId = direct
+    ? room.getJoinedMembers().find((m) => m.userId !== mx.getUserId())?.userId
+    : undefined;
   const callSession = useCallSession(room);
   const callMembers = useCallMembers(callSession);
   const startCall = useCallStart(direct);
@@ -299,21 +362,231 @@ export function RoomNavItem({
       mx.getSafeUserId()
     );
 
-    // Do not join if missing permissions or no livekit support or no webRTC support
-    if (!hasCallPermission || !livekitSupport(autoDiscoveryInfo) || !webRTCSupported()) {
-      return;
-    }
-
-    // Do not join if already in call
-    if (callEmbed) {
-      return;
-    }
-    // Start call in second click
+    if (!hasCallPermission || !livekitSupport(autoDiscoveryInfo) || !webRTCSupported()) return;
+    if (callEmbed) return;
     if (selected) {
       evt.preventDefault();
       startCall(room, callPref);
     }
   };
+
+  const menuPopOut = (
+    <PopOut
+      id={`menu-${room.roomId}`}
+      aria-expanded={!!menuAnchor}
+      anchor={menuAnchor}
+      offset={menuAnchor?.width === 0 ? 0 : undefined}
+      alignOffset={menuAnchor?.width === 0 ? 0 : -5}
+      position="Bottom"
+      align={menuAnchor?.width === 0 ? 'Start' : 'End'}
+      content={
+        <FocusTrap
+          focusTrapOptions={{
+            initialFocus: false,
+            returnFocusOnDeactivate: false,
+            onDeactivate: () => setMenuAnchor(undefined),
+            clickOutsideDeactivates: true,
+            isKeyForward: (evt: KeyboardEvent) => evt.key === 'ArrowDown',
+            isKeyBackward: (evt: KeyboardEvent) => evt.key === 'ArrowUp',
+            escapeDeactivates: stopPropagation,
+          }}
+        >
+          <RoomNavItemMenu
+            room={room}
+            requestClose={() => setMenuAnchor(undefined)}
+            notificationMode={notificationMode}
+          />
+        </FocusTrap>
+      }
+    >
+      <IconButton
+        onClick={handleOpenMenu}
+        aria-pressed={!!menuAnchor}
+        aria-controls={`menu-${room.roomId}`}
+        aria-label="More Options"
+        variant="Background"
+        fill="None"
+        size="300"
+        radii="300"
+      >
+        <Icon size="50" src={Icons.VerticalDots} />
+      </IconButton>
+    </PopOut>
+  );
+
+  const dragDropProps = {
+    onDragEnter: handleNavItemDragEnter,
+    onDragOver: handleNavItemDragOver,
+    onDragLeave: handleNavItemDragLeave,
+    onDrop: handleNavItemDrop,
+  };
+
+  const dragHighlight = isDraggingFiles && isDragOver && (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        borderRadius: 'inherit',
+        border: '2px solid rgba(255,255,255,0.5)',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        pointerEvents: 'none',
+        zIndex: 1,
+      }}
+    />
+  );
+
+  if (showPreview) {
+    const lastEvent = room.getLastLiveEvent();
+    const lastTs = lastEvent?.getTs();
+    const lastContent = lastEvent?.getContent() as any;
+    const preview = (() => {
+      if (!lastContent) return '';
+      const { msgtype, body } = lastContent;
+      if (msgtype === 'm.image') return '🖼 Photo';
+      if (msgtype === 'm.audio') return '🎤 Voice message';
+      if (msgtype === 'm.video') return '🎥 Video';
+      if (msgtype === 'm.file') return `📎 ${body || 'File'}`;
+      return (body as string | undefined) || '';
+    })();
+    const timeStr = lastTs ? formatRoomTime(lastTs) : '';
+
+    if (compact) {
+      return (
+        <NavItem
+          variant="Background"
+          radii="400"
+          highlight={unread !== undefined}
+          aria-selected={selected}
+          data-hover={!!menuAnchor}
+          onContextMenu={handleContextMenu}
+          onMouseDown={handleSelectGuardMouseDown}
+          {...hoverProps}
+          {...focusWithinProps}
+          {...dragDropProps}
+          style={{ position: 'relative' }}
+        >
+          {dragHighlight}
+          <NavLink to={linkPath}>
+            <NavItemContent>
+              <Box as="span" grow="Yes" alignItems="Center" gap="200" style={{ padding: `${toRem(6)} 0` }}>
+                <Avatar size="300" radii="Pill">
+                  <RoomAvatar
+                    roomId={room.roomId}
+                    colorId={dmMemberId}
+                    overrideUserId={dmMemberId}
+                    src={getRoomAvatarUrl(mx, room, 96, useAuthentication)}
+                    alt={roomName}
+                    renderFallback={() => (
+                      <Text as="span" size="T300">{nameInitials(roomName)}</Text>
+                    )}
+                  />
+                </Avatar>
+                <Box as="span" grow="Yes" justifyContent="SpaceBetween" alignItems="Center" gap="100" style={{ minWidth: 0 }}>
+                  <Text as="span" size="T300" priority={unread ? '500' : '400'} truncate style={{ fontWeight: unread ? 600 : 400 }}>
+                    {roomName}
+                  </Text>
+                  {timeStr && !optionsVisible && (
+                    <Text as="span" size="T200" priority="300" style={{ flexShrink: 0 }}>{timeStr}</Text>
+                  )}
+                </Box>
+                {!optionsVisible && unread && (
+                  <UnreadBadgeCenter>
+                    <UnreadBadge highlight={unread.highlight > 0} count={unread.total} />
+                  </UnreadBadgeCenter>
+                )}
+              </Box>
+            </NavItemContent>
+          </NavLink>
+          {optionsVisible && (
+            <NavItemOptions>
+              {menuPopOut}
+            </NavItemOptions>
+          )}
+        </NavItem>
+      );
+    }
+
+    return (
+      <NavItem
+        variant="Background"
+        radii="400"
+        highlight={unread !== undefined}
+        aria-selected={selected}
+        data-hover={!!menuAnchor}
+        onContextMenu={handleContextMenu}
+        onMouseDown={handleSelectGuardMouseDown}
+        {...hoverProps}
+        {...focusWithinProps}
+        {...dragDropProps}
+        style={{ position: 'relative' }}
+      >
+        {dragHighlight}
+        <NavLink to={linkPath}>
+          <NavItemContent>
+            <Box
+              as="span"
+              grow="Yes"
+              alignItems="Center"
+              gap="300"
+              style={{ padding: `${toRem(10)} 0` }}
+            >
+              <Avatar size="500" radii="Pill">
+              <RoomAvatar
+              roomId={room.roomId}
+              colorId={dmMemberId}
+              overrideUserId={dmMemberId}
+              src={
+              direct
+              ? getDirectRoomAvatarUrl(mx, room, 96, useAuthentication)
+              : getRoomAvatarUrl(mx, room, 96, useAuthentication)
+                    }
+                  alt={roomName}
+                  renderFallback={() => (
+                    <Text as="span" size="H6">
+                      {nameInitials(roomName)}
+                    </Text>
+                  )}
+                />
+              </Avatar>
+              <Box as="span" grow="Yes" direction="Column" style={{ minWidth: 0 }}>
+                <Box as="span" justifyContent="SpaceBetween" alignItems="Baseline" gap="100">
+                  <Text
+                    as="span"
+                    size="T400"
+                    priority={unread ? '500' : '400'}
+                    truncate
+                    style={{ fontWeight: 600 }}
+                  >
+                    {roomName}
+                  </Text>
+                  {timeStr && (
+                    <Text as="span" size="T200" priority="300" style={{ flexShrink: 0 }}>
+                      {timeStr}
+                    </Text>
+                  )}
+                </Box>
+                <Box as="span" justifyContent="SpaceBetween" alignItems="Center" gap="100">
+                  <Text as="span" size="T300" priority="300" truncate>
+                    {typingMember.length > 0 ? 'typing...' : preview}
+                  </Text>
+                  {!optionsVisible && unread && (
+                    <UnreadBadgeCenter>
+                      <UnreadBadge highlight={unread.highlight > 0} count={unread.total} />
+                    </UnreadBadgeCenter>
+                  )}
+                </Box>
+              </Box>
+            </Box>
+          </NavItemContent>
+        </NavLink>
+        {optionsVisible && (
+          <NavItemOptions>
+            {menuPopOut}
+          </NavItemOptions>
+        )}
+      </NavItem>
+    );
+  }
 
   return (
     <NavItem
@@ -323,16 +596,22 @@ export function RoomNavItem({
       aria-selected={selected}
       data-hover={!!menuAnchor}
       onContextMenu={handleContextMenu}
+      onMouseDown={handleSelectGuardMouseDown}
       {...hoverProps}
       {...focusWithinProps}
+      {...dragDropProps}
+      style={{ position: 'relative' }}
     >
+      {dragHighlight}
       <NavLink to={linkPath} onClick={room.isCallRoom() ? handleStartCall : undefined}>
         <NavItemContent>
           <Box as="span" grow="Yes" alignItems="Center" gap="200">
-            <Avatar size="200" radii="400">
+            <Avatar size="200" radii="Pill">
               {showAvatar ? (
                 <RoomAvatar
                   roomId={room.roomId}
+                  colorId={dmMemberId}
+                  overrideUserId={dmMemberId}
                   src={
                     direct
                       ? getDirectRoomAvatarUrl(mx, room, 96, useAuthentication)
@@ -394,47 +673,7 @@ export function RoomNavItem({
           {selected && (callEmbed?.roomId === room.roomId || room.isCallRoom()) && (
             <CallChatToggle />
           )}
-          <PopOut
-            id={`menu-${room.roomId}`}
-            aria-expanded={!!menuAnchor}
-            anchor={menuAnchor}
-            offset={menuAnchor?.width === 0 ? 0 : undefined}
-            alignOffset={menuAnchor?.width === 0 ? 0 : -5}
-            position="Bottom"
-            align={menuAnchor?.width === 0 ? 'Start' : 'End'}
-            content={
-              <FocusTrap
-                focusTrapOptions={{
-                  initialFocus: false,
-                  returnFocusOnDeactivate: false,
-                  onDeactivate: () => setMenuAnchor(undefined),
-                  clickOutsideDeactivates: true,
-                  isKeyForward: (evt: KeyboardEvent) => evt.key === 'ArrowDown',
-                  isKeyBackward: (evt: KeyboardEvent) => evt.key === 'ArrowUp',
-                  escapeDeactivates: stopPropagation,
-                }}
-              >
-                <RoomNavItemMenu
-                  room={room}
-                  requestClose={() => setMenuAnchor(undefined)}
-                  notificationMode={notificationMode}
-                />
-              </FocusTrap>
-            }
-          >
-            <IconButton
-              onClick={handleOpenMenu}
-              aria-pressed={!!menuAnchor}
-              aria-controls={`menu-${room.roomId}`}
-              aria-label="More Options"
-              variant="Background"
-              fill="None"
-              size="300"
-              radii="300"
-            >
-              <Icon size="50" src={Icons.VerticalDots} />
-            </IconButton>
-          </PopOut>
+          {menuPopOut}
         </NavItemOptions>
       )}
     </NavItem>

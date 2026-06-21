@@ -1,4 +1,4 @@
-import React, { MouseEventHandler, forwardRef, useMemo, useRef, useState } from 'react';
+import React, { MouseEventHandler, forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Avatar,
@@ -16,8 +16,10 @@ import {
   toRem,
 } from 'folds';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useAtom, useAtomValue } from 'jotai';
 import FocusTrap from 'focus-trap-react';
+import { RoomEvent, Room } from 'matrix-js-sdk';
 import { factoryRoomIdByActivity, factoryRoomIdByAtoZ } from '../../../utils/sort';
 import {
   NavButton,
@@ -44,9 +46,12 @@ import {
   useHomeSearchSelected,
 } from '../../../hooks/router/useHomeSelected';
 import { useHomeRooms } from './useHomeRooms';
+import { useDirectRooms } from '../direct/useDirectRooms';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { VirtualTile } from '../../../components/virtualizer';
-import { RoomNavCategoryButton, RoomNavItem } from '../../../features/room-nav';
+import { RoomNavCategoryButton, RoomNavItem, InviteNavItem } from '../../../features/room-nav';
+import { allInvitesAtom } from '../../../state/room-list/inviteList';
+import { isDirectInvite, isSpace } from '../../../utils/room';
 import { makeNavCategoryId } from '../../../state/closedNavCategories';
 import { roomToUnreadAtom } from '../../../state/room/roomToUnread';
 import { useCategoryHandler } from '../../../hooks/useCategoryHandler';
@@ -101,6 +106,9 @@ const HomeMenu = forwardRef<HTMLDivElement, HomeMenuProps>(({ requestClose }, re
 });
 
 function HomeHeader() {
+  const navigate = useNavigate();
+  const createRoomSelected = useHomeCreateSelected();
+  const searchSelected = useHomeSearchSelected();
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
 
   const handleOpenMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
@@ -120,7 +128,59 @@ function HomeHeader() {
               Home
             </Text>
           </Box>
-          <Box>
+          <Box alignItems="Center" gap="100">
+            <IconButton
+              title="Create Room"
+              variant="Background"
+              radii="300"
+              size="300"
+              aria-pressed={createRoomSelected}
+              onClick={() => navigate(getHomeCreatePath())}
+            >
+              <Icon src={Icons.Plus} size="200" />
+            </IconButton>
+            <UseStateProvider initial={false}>
+              {(open, setOpen) => (
+                <>
+                  <IconButton
+                    title="Join with Address"
+                    variant="Background"
+                    radii="300"
+                    size="300"
+                    aria-pressed={open}
+                    onClick={() => setOpen(true)}
+                  >
+                    <Icon src={Icons.Link} size="200" />
+                  </IconButton>
+                  {open && (
+                    <JoinAddressPrompt
+                      onCancel={() => setOpen(false)}
+                      onOpen={(roomIdOrAlias, viaServers, eventId) => {
+                        setOpen(false);
+                        const path = getHomeRoomPath(roomIdOrAlias, eventId);
+                        navigate(
+                          viaServers
+                            ? withSearchParam<_RoomSearchParams>(path, {
+                                viaServers: encodeSearchParamValueArray(viaServers),
+                              })
+                            : path
+                        );
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </UseStateProvider>
+            <IconButton
+              title="Message Search"
+              variant="Background"
+              radii="300"
+              size="300"
+              aria-pressed={searchSelected}
+              onClick={() => navigate(getHomeSearchPath())}
+            >
+              <Icon src={Icons.Search} size="200" />
+            </IconButton>
             <IconButton aria-pressed={!!menuAnchor} variant="Background" onClick={handleOpenMenu}>
               <Icon src={Icons.VerticalDots} size="200" />
             </IconButton>
@@ -194,39 +254,66 @@ function HomeEmpty() {
 }
 
 const DEFAULT_CATEGORY_ID = makeNavCategoryId('home', 'room');
+const DIRECT_CATEGORY_ID = makeNavCategoryId('home', 'direct');
+
 export function Home() {
   const mx = useMatrixClient();
   useNavToActivePathMapper('home');
+  const reduceMotion = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
   const rooms = useHomeRooms();
+  const directs = useDirectRooms();
   const notificationPreferences = useRoomsNotificationPreferencesContext();
   const roomToUnread = useAtomValue(roomToUnreadAtom);
   const navigate = useNavigate();
 
   const selectedRoomId = useSelectedRoom();
-  const createRoomSelected = useHomeCreateSelected();
-  const searchSelected = useHomeSearchSelected();
-  const noRoomToDisplay = rooms.length === 0;
+
+  const allInviteIds = useAtomValue(allInvitesAtom);
+  const inviteRooms = useMemo(
+    () => allInviteIds.map((id) => mx.getRoom(id)).filter((room): room is Room => !!room),
+    [mx, allInviteIds]
+  );
+  const directInvites = useMemo(
+    () => inviteRooms.filter((room) => isDirectInvite(room, mx.getSafeUserId())),
+    [mx, inviteRooms]
+  );
+  const roomInvites = useMemo(
+    () =>
+      inviteRooms.filter(
+        (room) => !isDirectInvite(room, mx.getSafeUserId()) && !isSpace(room)
+      ),
+    [mx, inviteRooms]
+  );
+
+  const noRoomToDisplay =
+    rooms.length === 0 && directs.length === 0 && inviteRooms.length === 0;
   const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
 
-  const sortedRooms = useMemo(() => {
-    const items = Array.from(rooms).sort(
-      closedCategories.has(DEFAULT_CATEGORY_ID)
-        ? factoryRoomIdByActivity(mx)
-        : factoryRoomIdByAtoZ(mx)
-    );
-    if (closedCategories.has(DEFAULT_CATEGORY_ID)) {
-      return items.filter((rId) => roomToUnread.has(rId) || rId === selectedRoomId);
-    }
-    return items;
-  }, [mx, rooms, closedCategories, roomToUnread, selectedRoomId]);
+  const [activityTick, setActivityTick] = useState(0);
+  useEffect(() => {
+    const handle = () => setActivityTick((t) => t + 1);
+    mx.on(RoomEvent.Timeline, handle);
+    return () => { mx.off(RoomEvent.Timeline, handle); };
+  }, [mx]);
 
-  const virtualizer = useVirtualizer({
-    count: sortedRooms.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => 38,
-    overscan: 10,
-  });
+  const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
+  const sortedDirects = useMemo(
+    () =>
+      Array.from(directs)
+        .sort(factoryRoomIdByActivity(mx))
+        .filter((roomId) => {
+          const room = mx.getRoom(roomId);
+          const lastTs = room?.getLastActiveTimestamp() ?? 0;
+          return Date.now() - lastTs < ONE_WEEK;
+        }),
+    [mx, directs, roomToUnread, activityTick]
+  );
+
+  const sortedRooms = useMemo(
+    () => Array.from(rooms).sort(factoryRoomIdByActivity(mx)),
+    [mx, rooms, activityTick]
+  );
 
   const handleCategoryClick = useCategoryHandler(setClosedCategories, (categoryId) =>
     closedCategories.has(categoryId)
@@ -240,120 +327,141 @@ export function Home() {
       ) : (
         <PageNavContent scrollRef={scrollRef}>
           <Box direction="Column" gap="300">
-            <NavCategory>
-              <NavItem variant="Background" radii="400" aria-selected={createRoomSelected}>
-                <NavButton onClick={() => navigate(getHomeCreatePath())}>
-                  <NavItemContent>
-                    <Box as="span" grow="Yes" alignItems="Center" gap="200">
-                      <Avatar size="200" radii="400">
-                        <Icon src={Icons.Plus} size="100" />
-                      </Avatar>
-                      <Box as="span" grow="Yes">
-                        <Text as="span" size="Inherit" truncate>
-                          Create Room
-                        </Text>
-                      </Box>
-                    </Box>
-                  </NavItemContent>
-                </NavButton>
-              </NavItem>
-              <UseStateProvider initial={false}>
-                {(open, setOpen) => (
-                  <>
-                    <NavItem variant="Background" radii="400">
-                      <NavButton onClick={() => setOpen(true)}>
-                        <NavItemContent>
-                          <Box as="span" grow="Yes" alignItems="Center" gap="200">
-                            <Avatar size="200" radii="400">
-                              <Icon src={Icons.Link} size="100" />
-                            </Avatar>
-                            <Box as="span" grow="Yes">
-                              <Text as="span" size="Inherit" truncate>
-                                Join with Address
-                              </Text>
-                            </Box>
-                          </Box>
-                        </NavItemContent>
-                      </NavButton>
-                    </NavItem>
-                    {open && (
-                      <JoinAddressPrompt
-                        onCancel={() => setOpen(false)}
-                        onOpen={(roomIdOrAlias, viaServers, eventId) => {
-                          setOpen(false);
-                          const path = getHomeRoomPath(roomIdOrAlias, eventId);
-                          navigate(
-                            viaServers
-                              ? withSearchParam<_RoomSearchParams>(path, {
-                                  viaServers: encodeSearchParamValueArray(viaServers),
-                                })
-                              : path
-                          );
-                        }}
-                      />
-                    )}
-                  </>
-                )}
-              </UseStateProvider>
-              <NavItem variant="Background" radii="400" aria-selected={searchSelected}>
-                <NavLink to={getHomeSearchPath()}>
-                  <NavItemContent>
-                    <Box as="span" grow="Yes" alignItems="Center" gap="200">
-                      <Avatar size="200" radii="400">
-                        <Icon src={Icons.Search} size="100" filled={searchSelected} />
-                      </Avatar>
-                      <Box as="span" grow="Yes">
-                        <Text as="span" size="Inherit" truncate>
-                          Message Search
-                        </Text>
-                      </Box>
-                    </Box>
-                  </NavItemContent>
-                </NavLink>
-              </NavItem>
-            </NavCategory>
-            <NavCategory>
-              <NavCategoryHeader>
-                <RoomNavCategoryButton
-                  closed={closedCategories.has(DEFAULT_CATEGORY_ID)}
-                  data-category-id={DEFAULT_CATEGORY_ID}
-                  onClick={handleCategoryClick}
-                >
-                  Rooms
-                </RoomNavCategoryButton>
-              </NavCategoryHeader>
-              <div
-                style={{
-                  position: 'relative',
-                  height: virtualizer.getTotalSize(),
-                }}
-              >
-                {virtualizer.getVirtualItems().map((vItem) => {
-                  const roomId = sortedRooms[vItem.index];
-                  const room = mx.getRoom(roomId);
-                  if (!room) return null;
-                  const selected = selectedRoomId === roomId;
-
-                  return (
-                    <VirtualTile
-                      virtualItem={vItem}
-                      key={vItem.index}
-                      ref={virtualizer.measureElement}
+            {(sortedDirects.length > 0 || directInvites.length > 0) && (
+              <NavCategory>
+                <NavCategoryHeader>
+                  <RoomNavCategoryButton
+                    closed={closedCategories.has(DIRECT_CATEGORY_ID)}
+                    data-category-id={DIRECT_CATEGORY_ID}
+                    onClick={handleCategoryClick}
+                  >
+                    Direct
+                  </RoomNavCategoryButton>
+                </NavCategoryHeader>
+                <AnimatePresence initial={false}>
+                  {directInvites.map((room) => (
+                    <motion.div
+                      key={room.roomId}
+                      layout={!reduceMotion}
+                      initial={reduceMotion ? false : { height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: reduceMotion ? 0 : 0.2, ease: 'easeOut' }}
+                      style={{ overflow: 'hidden' }}
                     >
-                      <RoomNavItem
+                      <InviteNavItem
                         room={room}
-                        selected={selected}
-                        linkPath={getHomeRoomPath(getCanonicalAliasOrRoomId(mx, roomId))}
-                        notificationMode={getRoomNotificationMode(
-                          notificationPreferences,
-                          room.roomId
-                        )}
+                        direct
+                        onJoined={(roomId) =>
+                          navigate(getHomeRoomPath(getCanonicalAliasOrRoomId(mx, roomId)))
+                        }
                       />
-                    </VirtualTile>
-                  );
-                })}
-              </div>
-            </NavCategory>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                <AnimatePresence initial={false}>
+                  {!closedCategories.has(DIRECT_CATEGORY_ID) && (
+                    <motion.div
+                      key="direct-fold"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: reduceMotion ? 0 : 0.2, ease: 'easeOut' }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      {sortedDirects.map((roomId) => {
+                        const room = mx.getRoom(roomId);
+                        if (!room) return null;
+                        const selected = selectedRoomId === roomId;
+                        return (
+                          <motion.div key={roomId} layout={!reduceMotion}>
+                            <RoomNavItem
+                              room={room}
+                              selected={selected}
+                              showAvatar
+                              direct
+                              showPreview
+                              linkPath={getHomeRoomPath(getCanonicalAliasOrRoomId(mx, roomId))}
+                              notificationMode={getRoomNotificationMode(
+                                notificationPreferences,
+                                room.roomId
+                              )}
+                            />
+                          </motion.div>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </NavCategory>
+            )}
+
+            {(rooms.length > 0 || roomInvites.length > 0) && (
+              <NavCategory>
+                <NavCategoryHeader>
+                  <RoomNavCategoryButton
+                    closed={closedCategories.has(DEFAULT_CATEGORY_ID)}
+                    data-category-id={DEFAULT_CATEGORY_ID}
+                    onClick={handleCategoryClick}
+                  >
+                    Rooms
+                  </RoomNavCategoryButton>
+                </NavCategoryHeader>
+                <AnimatePresence initial={false}>
+                  {roomInvites.map((room) => (
+                    <motion.div
+                      key={room.roomId}
+                      layout={!reduceMotion}
+                      initial={reduceMotion ? false : { height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: reduceMotion ? 0 : 0.2, ease: 'easeOut' }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      <InviteNavItem
+                        room={room}
+                        onJoined={(roomId) =>
+                          navigate(getHomeRoomPath(getCanonicalAliasOrRoomId(mx, roomId)))
+                        }
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                <AnimatePresence initial={false}>
+                  {!closedCategories.has(DEFAULT_CATEGORY_ID) && (
+                    <motion.div
+                      key="rooms-fold"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: reduceMotion ? 0 : 0.2, ease: 'easeOut' }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      {sortedRooms.map((roomId) => {
+                        const room = mx.getRoom(roomId);
+                        if (!room) return null;
+                        const selected = selectedRoomId === roomId;
+                        return (
+                          <motion.div key={roomId} layout={!reduceMotion}>
+                            <RoomNavItem
+                              room={room}
+                              selected={selected}
+                              showPreview
+                              compact
+                              linkPath={getHomeRoomPath(getCanonicalAliasOrRoomId(mx, roomId))}
+                              notificationMode={getRoomNotificationMode(
+                                notificationPreferences,
+                                room.roomId
+                              )}
+                            />
+                          </motion.div>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </NavCategory>
+            )}
           </Box>
         </PageNavContent>
       )}

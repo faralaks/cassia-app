@@ -7,7 +7,7 @@ type UnreadBadgeProps = {
   count: number;
 };
 const styles: CSSProperties = {
-  minWidth: toRem(16),
+  minWidth: toRem(20),
 };
 export function UnreadBadgeCenter({ children }: { children: ReactNode }) {
   return (
@@ -21,13 +21,13 @@ export function UnreadBadge({ highlight, count }: UnreadBadgeProps) {
   return (
     <Badge
       variant={highlight ? 'Success' : 'Secondary'}
-      size={count > 0 ? '400' : '200'}
+      size={count > 0 ? '500' : '300'}
       fill="Solid"
       radii="Pill"
       outlined={false}
     >
       {count > 0 && (
-        <Text as="span" size="L400">
+        <Text as="span" size="T200">
           {millify(count)}
         </Text>
       )}

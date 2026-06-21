@@ -21,9 +21,20 @@ export const NavItem = as<
 ));
 
 export const NavLink = forwardRef<HTMLAnchorElement, ComponentProps<typeof Link>>(
-  ({ className, ...props }, ref) => (
-    <Link className={classNames(css.NavLink, className)} {...props} ref={ref} />
-  )
+  ({ className, onMouseDown, ...props }, ref) => {
+    const handleMouseDown = (e: React.MouseEvent<HTMLAnchorElement>) => {
+      if (e.button === 2) e.preventDefault();
+      onMouseDown?.(e);
+    };
+    return (
+      <Link
+        className={classNames(css.NavLink, className)}
+        onMouseDown={handleMouseDown}
+        {...props}
+        ref={ref}
+      />
+    );
+  }
 );
 
 export const NavButton = as<'button'>(

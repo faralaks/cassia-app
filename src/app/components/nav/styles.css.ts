@@ -11,6 +11,7 @@ export const NavCategory = style([
 
 export const NavCategoryHeader = style({
   gap: config.space.S100,
+  userSelect: 'none',
 });
 
 export const NavLink = style({
@@ -20,6 +21,8 @@ export const NavLink = style({
   alignItems: 'center',
   cursor: 'pointer',
   flexGrow: 1,
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
   ':hover': {
     textDecoration: 'unset',
   },
@@ -53,6 +56,8 @@ const NavItemBase = style({
   color: OnContainer,
   outline: 'none',
   minHeight: toRem(36),
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
 
   selectors: {
     '&:hover, &:focus-visible': {
@@ -112,6 +117,8 @@ export const NavItemContent = style({
   display: 'flex',
   alignItems: 'center',
   fontWeight: config.fontWeight.W500,
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
 
   selectors: {
     '&:hover': {
