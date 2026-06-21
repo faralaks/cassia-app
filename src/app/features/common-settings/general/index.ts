@@ -1,4 +1,5 @@
 export * from './RoomAddress';
+export * from './RoomDirectMessage';
 export * from './RoomEncryption';
 export * from './RoomHistoryVisibility';
 export * from './RoomJoinRules';

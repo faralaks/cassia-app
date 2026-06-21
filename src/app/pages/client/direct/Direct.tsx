@@ -1,5 +1,5 @@
 import React, { MouseEventHandler, forwardRef, useMemo, useRef, useState } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtomValue } from 'jotai';
 import {
   Avatar,
   Box,
@@ -18,6 +18,7 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual';
 import FocusTrap from 'focus-trap-react';
 import { useNavigate } from 'react-router-dom';
+import { Room } from 'matrix-js-sdk';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { factoryRoomIdByActivity } from '../../../utils/sort';
 import {
@@ -33,16 +34,15 @@ import { getDirectCreatePath, getDirectRoomPath } from '../../pathUtils';
 import { getCanonicalAliasOrRoomId } from '../../../utils/matrix';
 import { useSelectedRoom } from '../../../hooks/router/useSelectedRoom';
 import { VirtualTile } from '../../../components/virtualizer';
-import { RoomNavCategoryButton, RoomNavItem } from '../../../features/room-nav';
-import { makeNavCategoryId } from '../../../state/closedNavCategories';
+import { RoomNavItem, InviteNavItem } from '../../../features/room-nav';
 import { roomToUnreadAtom } from '../../../state/room/roomToUnread';
-import { useCategoryHandler } from '../../../hooks/useCategoryHandler';
 import { useNavToActivePathMapper } from '../../../hooks/useNavToActivePathMapper';
 import { useDirectRooms } from './useDirectRooms';
 import { PageNav, PageNavContent, PageNavHeader } from '../../../components/page';
-import { useClosedNavCategoriesAtom } from '../../../state/hooks/closedNavCategories';
 import { useRoomsUnread } from '../../../state/hooks/unread';
 import { markAsRead } from '../../../utils/notifications';
+import { allInvitesAtom } from '../../../state/room-list/inviteList';
+import { isDirectInvite } from '../../../utils/room';
 import { stopPropagation } from '../../../utils/keyboard';
 import { useSetting } from '../../../state/hooks/settings';
 import { settingsAtom } from '../../../state/settings';
@@ -167,40 +167,40 @@ function DirectEmpty() {
   );
 }
 
-const DEFAULT_CATEGORY_ID = makeNavCategoryId('direct', 'direct');
 export function Direct() {
   const mx = useMatrixClient();
   useNavToActivePathMapper('direct');
   const scrollRef = useRef<HTMLDivElement>(null);
   const directs = useDirectRooms();
   const notificationPreferences = useRoomsNotificationPreferencesContext();
-  const roomToUnread = useAtomValue(roomToUnreadAtom);
   const navigate = useNavigate();
 
   const createDirectSelected = useDirectCreateSelected();
 
   const selectedRoomId = useSelectedRoom();
-  const noRoomToDisplay = directs.length === 0;
-  const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
 
-  const sortedDirects = useMemo(() => {
-    const items = Array.from(directs).sort(factoryRoomIdByActivity(mx));
-    if (closedCategories.has(DEFAULT_CATEGORY_ID)) {
-      return items.filter((rId) => roomToUnread.has(rId) || rId === selectedRoomId);
-    }
-    return items;
-  }, [mx, directs, closedCategories, roomToUnread, selectedRoomId]);
+  const allInviteIds = useAtomValue(allInvitesAtom);
+  const directInvites = useMemo(
+    () =>
+      allInviteIds
+        .map((id) => mx.getRoom(id))
+        .filter((room): room is Room => !!room && isDirectInvite(room, mx.getSafeUserId())),
+    [mx, allInviteIds]
+  );
+
+  const noRoomToDisplay = directs.length === 0 && directInvites.length === 0;
+
+  const sortedDirects = useMemo(
+    () => Array.from(directs).sort(factoryRoomIdByActivity(mx)),
+    [mx, directs]
+  );
 
   const virtualizer = useVirtualizer({
     count: sortedDirects.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 38,
+    estimateSize: () => 108,
     overscan: 10,
   });
-
-  const handleCategoryClick = useCategoryHandler(setClosedCategories, (categoryId) =>
-    closedCategories.has(categoryId)
-  );
 
   return (
     <PageNav>
@@ -230,14 +230,22 @@ export function Direct() {
             </NavCategory>
             <NavCategory>
               <NavCategoryHeader>
-                <RoomNavCategoryButton
-                  closed={closedCategories.has(DEFAULT_CATEGORY_ID)}
-                  data-category-id={DEFAULT_CATEGORY_ID}
-                  onClick={handleCategoryClick}
-                >
-                  Chats
-                </RoomNavCategoryButton>
+                <Box style={{ padding: `0 ${config.space.S200}` }}>
+                  <Text size="O400" priority="300" truncate>
+                    Direct
+                  </Text>
+                </Box>
               </NavCategoryHeader>
+              {directInvites.map((room) => (
+                <InviteNavItem
+                  key={room.roomId}
+                  room={room}
+                  direct
+                  onJoined={(roomId) =>
+                    navigate(getDirectRoomPath(getCanonicalAliasOrRoomId(mx, roomId)))
+                  }
+                />
+              ))}
               <div
                 style={{
                   position: 'relative',
@@ -261,6 +269,7 @@ export function Direct() {
                         selected={selected}
                         showAvatar
                         direct
+                        showPreview
                         linkPath={getDirectRoomPath(getCanonicalAliasOrRoomId(mx, roomId))}
                         notificationMode={getRoomNotificationMode(
                           notificationPreferences,

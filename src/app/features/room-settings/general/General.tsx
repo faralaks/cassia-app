@@ -5,6 +5,7 @@ import { usePowerLevels } from '../../../hooks/usePowerLevels';
 import { useRoom } from '../../../hooks/useRoom';
 import {
   RoomProfile,
+  RoomDirectMessage,
   RoomEncryption,
   RoomHistoryVisibility,
   RoomJoinRules,
@@ -52,6 +53,7 @@ export function General({ requestClose }: GeneralProps) {
                 <RoomHistoryVisibility permissions={permissions} />
                 <RoomEncryption permissions={permissions} />
                 <RoomPublish permissions={permissions} />
+                <RoomDirectMessage />
               </Box>
               <Box direction="Column" gap="100">
                 <Text size="L400">Addresses</Text>

@@ -458,6 +458,23 @@ export const getLatestEditableEvt = (
   return undefined;
 };
 
+// Most recent editable event strictly older than beforeEventId in the timeline.
+export const getPrevEditableEvt = (
+  timeline: EventTimeline,
+  beforeEventId: string,
+  canEdit: (mEvent: MatrixEvent) => boolean
+): MatrixEvent | undefined => {
+  const events = timeline.getEvents();
+  const beforeIndex = events.findIndex((evt) => evt.getId() === beforeEventId);
+  if (beforeIndex <= 0) return undefined;
+
+  for (let i = beforeIndex - 1; i >= 0; i -= 1) {
+    const evt = events[i];
+    if (canEdit(evt)) return evt;
+  }
+  return undefined;
+};
+
 export const reactionOrEditEvent = (mEvent: MatrixEvent) =>
   mEvent.getRelation()?.rel_type === RelationType.Annotation ||
   mEvent.getRelation()?.rel_type === RelationType.Replace;
