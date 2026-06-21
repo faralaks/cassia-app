@@ -1,4 +1,4 @@
-import { Box, Icon, IconSrc } from 'folds';
+import { Box, Icon, IconSrc, toRem } from 'folds';
 import React, { ReactNode } from 'react';
 import { BubbleLayout, CompactLayout, ModernLayout } from '..';
 import { MessageLayout } from '../../../state/settings';
@@ -8,8 +8,15 @@ export type EventContentProps = {
   time: ReactNode;
   iconSrc: IconSrc;
   content: ReactNode;
+  bubbleRadius?: number;
 };
-export function EventContent({ messageLayout, time, iconSrc, content }: EventContentProps) {
+export function EventContent({
+  messageLayout,
+  time,
+  iconSrc,
+  content,
+  bubbleRadius,
+}: EventContentProps) {
   const beforeJSX = (
     <Box gap="300" justifyContent="SpaceBetween" alignItems="Center" grow="Yes">
       {messageLayout === MessageLayout.Compact && time}
@@ -24,7 +31,20 @@ export function EventContent({ messageLayout, time, iconSrc, content }: EventCon
   );
 
   const msgContentJSX = (
-    <Box justifyContent="SpaceBetween" alignItems="Baseline" gap="200">
+    <Box
+      justifyContent="SpaceBetween"
+      alignItems="Baseline"
+      gap="200"
+      style={{
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        backdropFilter: 'blur(4px)',
+        borderRadius: toRem(bubbleRadius ?? 16),
+        padding: `2px ${toRem(10)}`,
+        display: 'inline-flex',
+        maxWidth: '100%',
+        userSelect: 'text',
+      }}
+    >
       {content}
       {messageLayout !== MessageLayout.Compact && time}
     </Box>

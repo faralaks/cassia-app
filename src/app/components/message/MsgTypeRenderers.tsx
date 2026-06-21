@@ -22,6 +22,7 @@ import {
   IThumbnailContent,
   IVideoContent,
   IVideoInfo,
+  MATRIX_MSC1767_AUDIO_PROPERTY_NAME,
   MATRIX_SPOILER_PROPERTY_NAME,
   MATRIX_SPOILER_REASON_PROPERTY_NAME,
 } from '../../../types/matrix/common';
@@ -189,7 +190,7 @@ type MImageProps = {
   renderImageContent: (props: RenderImageContentProps) => ReactNode;
   outlined?: boolean;
 };
-export function MImage({ content, renderImageContent, outlined }: MImageProps) {
+export function MImage({ content, renderImageContent }: MImageProps) {
   const imgInfo = content?.info;
   const mxcUrl = content.file?.url ?? content.url;
   if (typeof mxcUrl !== 'string') {
@@ -198,7 +199,7 @@ export function MImage({ content, renderImageContent, outlined }: MImageProps) {
   const height = scaleYDimension(imgInfo?.w || 400, 400, imgInfo?.h || 400);
 
   return (
-    <Attachment outlined={outlined}>
+    <Attachment>
       <AttachmentBox
         style={{
           height: toRem(height < 48 ? 48 : height),
@@ -233,7 +234,7 @@ type MVideoProps = {
   renderVideoContent: (props: RenderVideoContentProps) => ReactNode;
   outlined?: boolean;
 };
-export function MVideo({ content, renderAsFile, renderVideoContent, outlined }: MVideoProps) {
+export function MVideo({ content, renderAsFile, renderVideoContent }: MVideoProps) {
   const videoInfo = content?.info;
   const mxcUrl = content.file?.url ?? content.url;
   const safeMimeType = getBlobSafeMimeType(videoInfo?.mimetype ?? '');
@@ -250,7 +251,7 @@ export function MVideo({ content, renderAsFile, renderVideoContent, outlined }: 
   const filename = content.filename ?? content.body ?? 'Video';
 
   return (
-    <Attachment outlined={outlined}>
+    <Attachment>
       <AttachmentHeader>
         <FileHeader
           body={filename}
@@ -289,14 +290,28 @@ type RenderAudioContentProps = {
   mimeType: string;
   url: string;
   encInfo?: IEncryptedFile;
+  eventId?: string;
+  groupId?: string;
+  isOwn?: boolean;
+  waveform?: number[];
 };
 type MAudioProps = {
   content: IAudioContent;
   renderAsFile: () => ReactNode;
   renderAudioContent: (props: RenderAudioContentProps) => ReactNode;
   outlined?: boolean;
+  eventId?: string;
+  groupId?: string;
+  isOwn?: boolean;
 };
-export function MAudio({ content, renderAsFile, renderAudioContent, outlined }: MAudioProps) {
+export function MAudio({
+  content,
+  renderAsFile,
+  renderAudioContent,
+  eventId,
+  groupId,
+  isOwn,
+}: MAudioProps) {
   const audioInfo = content?.info;
   const mxcUrl = content.file?.url ?? content.url;
   const safeMimeType = getBlobSafeMimeType(audioInfo?.mimetype ?? '');
@@ -308,35 +323,16 @@ export function MAudio({ content, renderAsFile, renderAudioContent, outlined }: 
     return <BrokenContent />;
   }
 
-  const filename = content.filename ?? content.body ?? 'Audio';
-  return (
-    <Attachment outlined={outlined}>
-      <AttachmentHeader>
-        <FileHeader
-          body={filename}
-          mimeType={safeMimeType}
-          after={
-            <FileDownloadButton
-              filename={filename}
-              url={mxcUrl}
-              mimeType={safeMimeType}
-              encInfo={content.file}
-            />
-          }
-        />
-      </AttachmentHeader>
-      <AttachmentBox>
-        <AttachmentContent>
-          {renderAudioContent({
-            info: audioInfo,
-            mimeType: safeMimeType,
-            url: mxcUrl,
-            encInfo: content.file,
-          })}
-        </AttachmentContent>
-      </AttachmentBox>
-    </Attachment>
-  );
+  return renderAudioContent({
+    info: audioInfo,
+    mimeType: safeMimeType,
+    url: mxcUrl,
+    encInfo: content.file,
+    eventId,
+    groupId,
+    isOwn,
+    waveform: content[MATRIX_MSC1767_AUDIO_PROPERTY_NAME]?.waveform,
+  });
 }
 
 type RenderFileContentProps = {

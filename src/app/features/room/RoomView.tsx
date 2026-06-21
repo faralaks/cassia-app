@@ -1,8 +1,9 @@
-import React, { useCallback, useRef } from 'react';
-import { Box, Text, config } from 'folds';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Box, Icon, Icons, Text, config, toRem } from 'folds';
 import { EventType } from 'matrix-js-sdk';
 import { ReactEditor } from 'slate-react';
 import { isKeyHotkey } from 'is-hotkey';
+import { useAtomValue } from 'jotai';
 import { useStateEvent } from '../../hooks/useStateEvent';
 import { StateEvent } from '../../../types/matrix/room';
 import { usePowerLevelsContext } from '../../hooks/usePowerLevels';
@@ -13,15 +14,14 @@ import { RoomTimeline } from './RoomTimeline';
 import { RoomViewTyping } from './RoomViewTyping';
 import { RoomTombstone } from './RoomTombstone';
 import { RoomInput } from './RoomInput';
-import { RoomViewFollowing, RoomViewFollowingPlaceholder } from './RoomViewFollowing';
 import { Page } from '../../components/page';
 import { useKeyDown } from '../../hooks/useKeyDown';
 import { editableActiveElement } from '../../utils/dom';
-import { settingsAtom } from '../../state/settings';
-import { useSetting } from '../../state/hooks/settings';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useRoomCreators } from '../../hooks/useRoomCreators';
 import { useRoom } from '../../hooks/useRoom';
+import { roomIdToStyleAtomFamily, defaultStyleAtom } from '../../state/room/roomStyles';
+import { bgImageCss, hexToRgba } from '../../utils/chatStyle';
 
 const FN_KEYS_REGEX = /^F\d+$/;
 const shouldFocusMessageField = (evt: KeyboardEvent): boolean => {
@@ -57,12 +57,20 @@ const shouldFocusMessageField = (evt: KeyboardEvent): boolean => {
 export function RoomView({ eventId }: { eventId?: string }) {
   const roomInputRef = useRef<HTMLDivElement>(null);
   const roomViewRef = useRef<HTMLDivElement>(null);
-
-  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const [dropZoneActive, setDropZoneActive] = useState(false);
 
   const room = useRoom();
   const { roomId } = room;
   const editor = useEditor();
+  const roomStyleOverride = useAtomValue(roomIdToStyleAtomFamily(roomId));
+  const defaultStyle = useAtomValue(defaultStyleAtom);
+  const roomStyle = { ...defaultStyle, ...roomStyleOverride };
+  const incomingBg = roomStyle.incomingColor
+    ? hexToRgba(roomStyle.incomingColor, roomStyle.incomingOpacity ?? 1)
+    : undefined;
+  const outgoingBg = roomStyle.outgoingColor
+    ? hexToRgba(roomStyle.outgoingColor, roomStyle.outgoingOpacity ?? 1)
+    : undefined;
 
   const mx = useMatrixClient();
 
@@ -91,7 +99,53 @@ export function RoomView({ eventId }: { eventId?: string }) {
   );
 
   return (
-    <Page ref={roomViewRef}>
+    <Page
+      ref={roomViewRef}
+      style={{
+        position: 'relative',
+        ...(incomingBg ? { ['--bubble-incoming-bg' as string]: incomingBg } : {}),
+        ...(outgoingBg ? { ['--bubble-outgoing-bg' as string]: outgoingBg } : {}),
+        ...(roomStyle.incomingTextColor ? { ['--bubble-incoming-text' as string]: roomStyle.incomingTextColor } : {}),
+        ...(roomStyle.outgoingTextColor ? { ['--bubble-outgoing-text' as string]: roomStyle.outgoingTextColor } : {}),
+        ...(roomStyle.bubbleRadius !== undefined ? { ['--bubble-radius' as string]: `${roomStyle.bubbleRadius}px` } : {}),
+        ...(roomStyle.bgImage && !roomStyle.bgPlain ? {
+          background: bgImageCss(roomStyle.bgImage, roomStyle.bgDim ?? 0),
+          backgroundAttachment: 'local',
+        } : {}),
+      } as React.CSSProperties}
+    >
+      {dropZoneActive && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 10,
+            pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          <Box
+            direction="Column"
+            alignItems="Center"
+            gap="400"
+            style={{
+              backgroundColor: 'rgba(30, 30, 30, 0.95)',
+              borderRadius: toRem(16),
+              padding: toRem(48),
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}
+          >
+            <Icon size="600" src={Icons.File} />
+            <Text size="H4" align="Center">
+              {`Drop in "${room.name || 'Room'}"`}
+            </Text>
+          </Box>
+        </div>
+      )}
       <Box grow="Yes" direction="Column">
         <RoomTimeline
           key={roomId}
@@ -103,7 +157,7 @@ export function RoomView({ eventId }: { eventId?: string }) {
         <RoomViewTyping room={room} />
       </Box>
       <Box shrink="No" direction="Column">
-        <div style={{ padding: `0 ${config.space.S400}` }}>
+        <div style={{ padding: 0 }}>
           {tombstoneEvent ? (
             <RoomTombstone
               roomId={roomId}
@@ -118,6 +172,7 @@ export function RoomView({ eventId }: { eventId?: string }) {
                   editor={editor}
                   roomId={roomId}
                   fileDropContainerRef={roomViewRef}
+                  onDropZoneActiveChange={setDropZoneActive}
                   ref={roomInputRef}
                 />
               )}
@@ -133,7 +188,6 @@ export function RoomView({ eventId }: { eventId?: string }) {
             </>
           )}
         </div>
-        {hideActivity ? <RoomViewFollowingPlaceholder /> : <RoomViewFollowing room={room} />}
       </Box>
     </Page>
   );

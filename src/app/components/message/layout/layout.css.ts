@@ -1,4 +1,4 @@
-import { createVar, keyframes, style, styleVariants } from '@vanilla-extract/css';
+import { createVar, globalStyle, keyframes, style, styleVariants } from '@vanilla-extract/css';
 import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
 import { DefaultReset, color, config, toRem } from 'folds';
 
@@ -42,32 +42,22 @@ const SpacingVariant = styleVariants({
 });
 
 const highlightAnime = keyframes({
-  '0%': {
-    backgroundColor: color.Primary.Container,
-  },
-  '25%': {
-    backgroundColor: color.Primary.ContainerActive,
-  },
-  '50%': {
-    backgroundColor: color.Primary.Container,
-  },
-  '75%': {
-    backgroundColor: color.Primary.ContainerActive,
-  },
-  '100%': {
-    backgroundColor: color.Primary.Container,
-  },
+  '0%': { backgroundColor: 'transparent' },
+  '12%': { backgroundColor: color.Primary.Container },
+  '60%': { backgroundColor: color.Primary.Container },
+  '100%': { backgroundColor: 'transparent' },
 });
 const HighlightVariant = styleVariants({
   true: {
-    animation: `${highlightAnime} 2000ms ease-in-out`,
-    animationIterationCount: 'infinite',
+    animation: `${highlightAnime} 2500ms ease-in-out`,
+    animationIterationCount: '1',
+    animationFillMode: 'forwards',
   },
 });
 
 const SelectedVariant = styleVariants({
   true: {
-    backgroundColor: color.Surface.ContainerActive,
+    backgroundColor: 'transparent',
   },
 });
 
@@ -140,10 +130,13 @@ export const BubbleBefore = style({
 
 export const BubbleContent = style({
   maxWidth: toRem(800),
-  padding: config.space.S200,
-  backgroundColor: color.SurfaceVariant.Container,
-  color: color.SurfaceVariant.OnContainer,
-  borderRadius: config.radii.R500,
+  paddingTop: config.space.S200,
+  paddingLeft: config.space.S200,
+  paddingRight: config.space.S200,
+  paddingBottom: config.space.S200,
+  backgroundColor: `var(--bubble-incoming-bg, rgba(60, 60, 80, 0.85))`,
+  color: `var(--bubble-incoming-text, #ffffff)`,
+  borderRadius: `var(--bubble-radius, ${config.radii.R500})`,
   position: 'relative',
 });
 
@@ -161,10 +154,34 @@ export const BubbleLeftArrow = style({
   zIndex: 1,
 });
 
+export const BubbleContentOwn = style([
+  BubbleContent,
+  {
+    backgroundColor: `var(--bubble-outgoing-bg, rgba(70, 90, 180, 0.85))`,
+    color: `var(--bubble-outgoing-text, #ffffff)`,
+    borderTopRightRadius: 0,
+  },
+]);
+
+export const BubbleRightArrow = style({
+  width: toRem(9),
+  height: toRem(8),
+
+  position: 'absolute',
+  top: 0,
+  right: toRem(-8),
+  zIndex: 1,
+});
+
+globalStyle(`[data-selected="true"] .${BubbleContent}`, {
+  filter: 'brightness(1.5)',
+});
+
 export const Username = style({
   overflow: 'hidden',
   whiteSpace: 'nowrap',
   textOverflow: 'ellipsis',
+  userSelect: 'text',
   selectors: {
     'button&': {
       cursor: 'pointer',
@@ -182,6 +199,7 @@ export const UsernameBold = style({
 export const MessageTextBody = recipe({
   base: {
     wordBreak: 'break-word',
+    userSelect: 'text',
   },
   variants: {
     preWrap: {

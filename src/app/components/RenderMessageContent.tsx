@@ -23,9 +23,10 @@ import {
   ThumbnailContent,
   UnsupportedContent,
   VideoContent,
+  UnknownMsgTypeContent,
 } from './message';
 import { UrlPreviewCard, UrlPreviewHolder } from './url-preview';
-import { Image, MediaControl, Video } from './media';
+import { Image, Video } from './media';
 import { ImageViewer } from './image-viewer';
 import { PdfViewer } from './Pdf-viewer';
 import { TextViewer } from './text-viewer';
@@ -44,6 +45,9 @@ type RenderMessageContentProps = {
   htmlReactParserOptions: HTMLReactParserOptions;
   linkifyOpts: Opts;
   outlineAttachment?: boolean;
+  eventId?: string;
+  voiceGroupId?: string;
+  isOwn?: boolean;
 };
 export function RenderMessageContent({
   displayName,
@@ -57,6 +61,9 @@ export function RenderMessageContent({
   htmlReactParserOptions,
   linkifyOpts,
   outlineAttachment,
+  eventId,
+  voiceGroupId,
+  isOwn,
 }: RenderMessageContentProps) {
   const renderUrlsPreview = (urls: string[]) => {
     const filteredUrls = urls.filter((url) => !testMatrixTo(url));
@@ -242,10 +249,11 @@ export function RenderMessageContent({
         <MAudio
           content={getContent()}
           renderAsFile={renderFile}
-          renderAudioContent={(props) => (
-            <AudioContent {...props} renderMediaControl={(p) => <MediaControl {...p} />} />
-          )}
+          renderAudioContent={(props) => <AudioContent {...props} />}
           outlined={outlineAttachment}
+          eventId={eventId}
+          groupId={voiceGroupId}
+          isOwn={isOwn}
         />
         {renderCaption()}
       </>
@@ -264,5 +272,5 @@ export function RenderMessageContent({
     return <MBadEncrypted />;
   }
 
-  return <UnsupportedContent />;
+  return <UnknownMsgTypeContent msgType={msgType} rawContent={getContent()} />;
 }

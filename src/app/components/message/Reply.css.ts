@@ -19,23 +19,27 @@ export const ThreadIndicator = style({
 });
 
 export const Reply = style({
-  marginBottom: toRem(1),
+  borderLeft: `${toRem(3)} solid transparent`,
+  borderRadius: `0 ${config.radii.R300} ${config.radii.R300} 0`,
+  paddingLeft: config.space.S200,
+  paddingTop: toRem(4),
+  paddingBottom: toRem(4),
+  marginBottom: config.space.S100,
+  backgroundColor: 'rgba(0, 0, 0, 0.1)',
   minWidth: 0,
   maxWidth: '100%',
-  minHeight: config.lineHeight.T300,
+
   selectors: {
     'button&': {
       cursor: 'pointer',
+    },
+    'button&:hover': {
+      backgroundColor: 'rgba(0, 0, 0, 0.18)',
     },
   },
 });
 
 export const ReplyContent = style({
-  opacity: config.opacity.P300,
-
-  selectors: {
-    [`${Reply}:hover &`]: {
-      opacity: config.opacity.P500,
-    },
-  },
+  opacity: 0.75,
+  color: 'inherit',
 });

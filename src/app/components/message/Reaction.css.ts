@@ -11,10 +11,10 @@ export const Reaction = style([
   FocusOutline,
   {
     vars: {
-      [Container]: color.SurfaceVariant.Container,
+      [Container]: 'transparent',
       [ContainerHover]: color.SurfaceVariant.ContainerHover,
       [ContainerActive]: color.SurfaceVariant.ContainerActive,
-      [ContainerLine]: color.SurfaceVariant.ContainerLine,
+      [ContainerLine]: 'transparent',
       [OnContainer]: color.SurfaceVariant.OnContainer,
     },
     padding: `${toRem(2)} ${config.space.S200} ${toRem(2)} ${config.space.S100}`,
@@ -28,10 +28,10 @@ export const Reaction = style([
       },
       '&[aria-pressed=true]': {
         vars: {
-          [Container]: color.Primary.Container,
+          [Container]: color.Primary.ContainerHover,
           [ContainerHover]: color.Primary.ContainerHover,
           [ContainerActive]: color.Primary.ContainerActive,
-          [ContainerLine]: color.Primary.ContainerLine,
+          [ContainerLine]: 'transparent',
           [OnContainer]: color.Primary.OnContainer,
         },
         backgroundColor: Container,

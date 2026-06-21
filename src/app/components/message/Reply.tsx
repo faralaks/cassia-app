@@ -21,13 +21,12 @@ export const ReplyLayout = as<'div', ReplyLayoutProps>(
   ({ username, userColor, className, children, ...props }, ref) => (
     <Box
       className={classNames(css.Reply, className)}
-      alignItems="Center"
-      gap="100"
+      direction="Column"
+      style={{ borderLeftColor: userColor }}
       {...props}
       ref={ref}
     >
-      <Box style={{ color: userColor, maxWidth: toRem(200) }} alignItems="Center" shrink="No">
-        <Icon size="100" src={Icons.ReplyArrow} />
+      <Box style={{ color: userColor }}>
         {username}
       </Box>
       <Box grow="Yes" className={css.ReplyContent}>
@@ -97,16 +96,27 @@ export const Reply = as<'div', ReplyProps>(
       <MessageFailedContent />
     );
 
+    const rawBody = body ? trimReplyFromBody(body) : undefined;
+    const truncatedBody =
+      rawBody && rawBody.length > 80 ? `${rawBody.slice(0, 80)}\u2026` : rawBody;
     const badEncryption = replyEvent?.getContent().msgtype === 'm.bad.encrypted';
-    const bodyJSX = body ? scaleSystemEmoji(trimReplyFromBody(body)) : fallbackBody;
+    const bodyJSX = truncatedBody ? scaleSystemEmoji(truncatedBody) : fallbackBody;
 
     return (
-      <Box direction="Row" gap="200" alignItems="Center" {...props} ref={ref}>
+      <Box
+        direction="Row"
+        gap="200"
+        alignItems="Center"
+        data-event-id={replyEventId}
+        onClick={onClick}
+        style={{ cursor: 'pointer' }}
+        {...props}
+        ref={ref}
+      >
         {threadRootId && (
           <ThreadIndicator as="button" data-event-id={threadRootId} onClick={onClick} />
         )}
         <ReplyLayout
-          as="button"
           userColor={usernameColor}
           username={
             sender && (
@@ -115,8 +125,6 @@ export const Reply = as<'div', ReplyProps>(
               </Text>
             )
           }
-          data-event-id={replyEventId}
-          onClick={onClick}
         >
           {replyEvent !== undefined ? (
             <Text size="T300" truncate>
