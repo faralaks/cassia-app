@@ -3,9 +3,13 @@
 
 export const APP_NAME = 'Cassia';
 
-// User-facing app version (shown on the login page and the About screen). Bump
-// here to update it everywhere.
-export const APP_VERSION = '1.0.0';
+// User-facing app version (shown on the login page and the About screen).
+// Injected at build time from the git tag via Vite's `define` (see
+// vite.config.js). Defaults to 'unknown' for local/dev builds and any build
+// without an explicit version (e.g. no CASSIA_VERSION env at build time).
+declare const __APP_VERSION__: string;
+export const APP_VERSION =
+  typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'unknown';
 
 export const REPO_URL = 'https://github.com/faralaks/cassia-desktop';
 export const RELEASES_URL = `${REPO_URL}/releases`;

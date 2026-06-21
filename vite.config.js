@@ -78,6 +78,14 @@ export default defineConfig({
   appType: 'spa',
   publicDir: false,
   base: buildConfig.base,
+  // App version injected at build time from the git tag (set by the Docker
+  // build / CI via the CASSIA_VERSION env). Falls back so local/dev builds
+  // leave it undefined and cons.ts resolves it to 'unknown'.
+  define: {
+    ...(process.env.CASSIA_VERSION
+      ? { __APP_VERSION__: JSON.stringify(process.env.CASSIA_VERSION) }
+      : {}),
+  },
   server: {
     port: 8080,
     host: true,
