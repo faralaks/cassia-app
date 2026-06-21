@@ -24,6 +24,8 @@ import {
   Button,
 } from 'folds';
 import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { getPopupMotionProps } from '../../components/popupMotion';
 import { Room } from 'matrix-js-sdk';
 import { useStateEvent } from '../../hooks/useStateEvent';
 import { PageHeader } from '../../components/page';
@@ -46,6 +48,7 @@ import { markAsRead } from '../../utils/notifications';
 import { roomToUnreadAtom } from '../../state/room/roomToUnread';
 import { copyToClipboard } from '../../utils/dom';
 import { LeaveRoomPrompt } from '../../components/leave-room-prompt';
+import { nameInitials } from '../../utils/common';
 import { useRoomAvatar, useRoomName, useRoomTopic } from '../../hooks/useRoomMeta';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 import { stopPropagation } from '../../utils/keyboard';
@@ -63,6 +66,7 @@ import {
   useRoomsNotificationPreferencesContext,
 } from '../../hooks/useRoomsNotificationPreferences';
 import { JumpToTime } from './jump-to-time';
+import { useRoomLatestReaders } from './RoomViewFollowing';
 import { useRoomNavigate } from '../../hooks/useRoomNavigate';
 import { useRoomCreators } from '../../hooks/useRoomCreators';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
@@ -72,6 +76,7 @@ import { RoomSettingsPage } from '../../state/roomSettings';
 import { useCallEmbed, useCallStart } from '../../hooks/useCallEmbed';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
+import { LegacyCallControls, LegacyCallStatusIndicator } from './LegacyCallControls';
 
 type RoomMenuProps = {
   room: Room;
@@ -340,7 +345,7 @@ function CallButton() {
             fill="None"
             ref={triggerRef}
             onClick={handleOpenMenu}
-            onContextMenu={(evt) => {
+            onContextMenu={(evt: React.MouseEvent<HTMLButtonElement>) => {
               evt.preventDefault();
               startCall(room, {
                 microphone: true,
@@ -403,6 +408,8 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
 
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
   const [pinMenuAnchor, setPinMenuAnchor] = useState<RectCords>();
+  const [pinOpen, setPinOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
   const direct = useIsDirectRoom();
 
   const pinnedEvents = useRoomPinnedEvents(room);
@@ -416,6 +423,13 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
     : undefined;
 
   const [peopleDrawer, setPeopleDrawer] = useSetting(settingsAtom, 'isPeopleDrawer');
+  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const latestReaders = useRoomLatestReaders(room);
+  const dmMemberId = direct
+    ? room.getJoinedMembers().find((m) => m.userId !== mx.getSafeUserId())?.userId
+    : undefined;
+  const partnerCaughtUp =
+    !hideActivity && direct && !!dmMemberId && latestReaders.includes(dmMemberId);
 
   const handleSearchClick = () => {
     const searchParams: _SearchPathSearchParams = {
@@ -433,6 +447,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
 
   const handleOpenPinMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
     setPinMenuAnchor(evt.currentTarget.getBoundingClientRect());
+    setPinOpen(true);
   };
 
   const openSettings = useOpenRoomSettings();
@@ -447,7 +462,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
 
   return (
     <PageHeader
-      className={ContainerColor({ variant: 'Surface' })}
+      className={ContainerColor({ variant: 'Background' })}
       balance={screenSize === ScreenSize.Mobile}
     >
       <Box grow="Yes" gap="300">
@@ -464,58 +479,72 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
         )}
         <Box grow="Yes" alignItems="Center" gap="300">
           {screenSize !== ScreenSize.Mobile && (
-            <Avatar size="300">
+            <Avatar size="300" radii="Pill">
               <RoomAvatar
                 roomId={room.roomId}
+                colorId={dmMemberId}
+                overrideUserId={dmMemberId}
                 src={avatarUrl}
                 alt={name}
                 renderFallback={() => (
-                  <RoomIcon size="200" joinRule={room.getJoinRule()} roomType={room.getType()} />
+                  <Text as="span" size="H4">
+                    {nameInitials(name)}
+                  </Text>
                 )}
               />
             </Avatar>
           )}
-          <Box direction="Column">
-            <Text size={topic ? 'H5' : 'H3'} truncate>
-              {name}
-            </Text>
-            {topic && (
-              <UseStateProvider initial={false}>
-                {(viewTopic, setViewTopic) => (
-                  <>
-                    <Overlay open={viewTopic} backdrop={<OverlayBackdrop />}>
-                      <OverlayCenter>
-                        <FocusTrap
-                          focusTrapOptions={{
-                            initialFocus: false,
-                            clickOutsideDeactivates: true,
-                            onDeactivate: () => setViewTopic(false),
-                            escapeDeactivates: stopPropagation,
-                          }}
-                        >
-                          <RoomTopicViewer
-                            name={name}
-                            topic={topic}
-                            requestClose={() => setViewTopic(false)}
-                          />
-                        </FocusTrap>
-                      </OverlayCenter>
-                    </Overlay>
-                    <Text
-                      as="button"
-                      type="button"
-                      onClick={() => setViewTopic(true)}
-                      className={css.HeaderTopic}
-                      size="T200"
-                      priority="300"
-                      truncate
-                    >
-                      {topic}
-                    </Text>
-                  </>
-                )}
-              </UseStateProvider>
+          <Box alignItems="Center" gap="200" style={{ minWidth: 0 }}>
+            <Box direction="Column" style={{ minWidth: 0 }}>
+              <Text size={topic ? 'H5' : 'H3'} truncate>
+                {name}
+              </Text>
+              {topic && (
+                <UseStateProvider initial={false}>
+                  {(viewTopic, setViewTopic) => (
+                    <>
+                      <Overlay open={viewTopic} backdrop={<OverlayBackdrop />}>
+                        <OverlayCenter>
+                          <FocusTrap
+                            focusTrapOptions={{
+                              initialFocus: false,
+                              clickOutsideDeactivates: true,
+                              onDeactivate: () => setViewTopic(false),
+                              escapeDeactivates: stopPropagation,
+                            }}
+                          >
+                            <RoomTopicViewer
+                              name={name}
+                              topic={topic}
+                              requestClose={() => setViewTopic(false)}
+                            />
+                          </FocusTrap>
+                        </OverlayCenter>
+                      </Overlay>
+                      <Text
+                        as="button"
+                        type="button"
+                        onClick={() => setViewTopic(true)}
+                        className={css.HeaderTopic}
+                        size="T200"
+                        priority="300"
+                        truncate
+                      >
+                        {topic}
+                      </Text>
+                    </>
+                  )}
+                </UseStateProvider>
+              )}
+            </Box>
+            {partnerCaughtUp && (
+              <Icon
+                style={{ opacity: config.opacity.P300, flexShrink: 0 }}
+                size="100"
+                src={Icons.CheckTwice}
+              />
             )}
+            <LegacyCallStatusIndicator />
           </Box>
         </Box>
 
@@ -537,6 +566,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
               )}
             </TooltipProvider>
           )}
+          <LegacyCallControls />
           <TooltipProvider
             position="Bottom"
             offset={4}
@@ -552,7 +582,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
                 style={{ position: 'relative' }}
                 onClick={handleOpenPinMenu}
                 ref={triggerRef}
-                aria-pressed={!!pinMenuAnchor}
+                aria-pressed={pinOpen}
               >
                 {pinnedEvents.length > 0 && (
                   <Badge
@@ -571,7 +601,7 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
                     </Text>
                   </Badge>
                 )}
-                <Icon size="400" src={Icons.Pin} filled={!!pinMenuAnchor} />
+                <Icon size="400" src={Icons.Pin} filled={pinOpen} />
               </IconButton>
             )}
           </TooltipProvider>
@@ -579,19 +609,29 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
             anchor={pinMenuAnchor}
             position="Bottom"
             content={
-              <FocusTrap
-                focusTrapOptions={{
-                  initialFocus: false,
-                  returnFocusOnDeactivate: false,
-                  onDeactivate: () => setPinMenuAnchor(undefined),
-                  clickOutsideDeactivates: true,
-                  isKeyForward: (evt: KeyboardEvent) => evt.key === 'ArrowDown',
-                  isKeyBackward: (evt: KeyboardEvent) => evt.key === 'ArrowUp',
-                  escapeDeactivates: stopPropagation,
-                }}
-              >
-                <RoomPinMenu room={room} requestClose={() => setPinMenuAnchor(undefined)} />
-              </FocusTrap>
+              <AnimatePresence onExitComplete={() => setPinMenuAnchor(undefined)}>
+                {pinOpen && (
+                  <motion.div
+                    key="pin-menu"
+                    {...getPopupMotionProps(reduceMotion)}
+                    style={{ transformOrigin: 'top right' }}
+                  >
+                    <FocusTrap
+                      focusTrapOptions={{
+                        initialFocus: false,
+                        returnFocusOnDeactivate: false,
+                        onDeactivate: () => setPinOpen(false),
+                        clickOutsideDeactivates: true,
+                        isKeyForward: (evt: KeyboardEvent) => evt.key === 'ArrowDown',
+                        isKeyBackward: (evt: KeyboardEvent) => evt.key === 'ArrowUp',
+                        escapeDeactivates: stopPropagation,
+                      }}
+                    >
+                      <RoomPinMenu room={room} requestClose={() => setPinOpen(false)} />
+                    </FocusTrap>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             }
           />
           {!room.isCallRoom() && livekitSupported && rtcSupported && hasCallPermission && (

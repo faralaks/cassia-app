@@ -357,6 +357,7 @@ type EmojiBoardProps = {
   imagePackRooms: Room[];
   requestClose: () => void;
   returnFocusOnDeactivate?: boolean;
+  active?: boolean;
   onEmojiSelect?: (unicode: string, shortcode: string) => void;
   onCustomEmojiSelect?: (mxc: string, shortcode: string) => void;
   onStickerSelect?: (mxc: string, shortcode: string, label: string) => void;
@@ -370,6 +371,7 @@ export function EmojiBoard({
   imagePackRooms,
   requestClose,
   returnFocusOnDeactivate,
+  active = true,
   onEmojiSelect,
   onCustomEmojiSelect,
   onStickerSelect,
@@ -424,7 +426,7 @@ export function EmojiBoard({
   const virtualizer = useVirtualizer({
     count: groups.length,
     getScrollElement: () => contentScrollRef.current,
-    estimateSize: () => 40,
+    estimateSize: () => 280,
     overscan: VIRTUAL_OVER_SCAN,
   });
   const vItems = virtualizer.getVirtualItems();
@@ -489,6 +491,7 @@ export function EmojiBoard({
 
   return (
     <FocusTrap
+      active={active}
       focusTrapOptions={{
         returnFocusOnDeactivate,
         initialFocus: false,

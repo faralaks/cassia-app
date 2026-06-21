@@ -4,10 +4,13 @@ import { Modal, Overlay, OverlayBackdrop, OverlayCenter } from 'folds';
 import { stopPropagation } from '../utils/keyboard';
 
 type Modal500Props = {
+  open?: boolean;
   requestClose: () => void;
   children: ReactNode;
 };
-export function Modal500({ requestClose, children }: Modal500Props) {
+export function Modal500({ open = true, requestClose, children }: Modal500Props) {
+  if (!open) return null;
+
   return (
     <Overlay open backdrop={<OverlayBackdrop />}>
       <OverlayCenter>
