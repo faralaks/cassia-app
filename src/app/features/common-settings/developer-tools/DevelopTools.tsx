@@ -58,7 +58,8 @@ export function DeveloperTools({ requestClose }: DeveloperToolsProps) {
 
   const submitAccountData: AccountDataSubmitCallback = useCallback(
     async (type, content) => {
-      await mx.setRoomAccountData(room.roomId, type, content);
+      // Dev tool: type is an arbitrary user-entered room account-data event type.
+      await mx.setRoomAccountData(room.roomId, type as never, content as never);
     },
     [mx, room.roomId]
   );

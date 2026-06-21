@@ -139,7 +139,7 @@ function GlobalPackSelector({
               if (!room) return null;
               const roomPackAddresses = roomPacks
                 .map((pack) => pack.address)
-                .filter((addr) => addr !== undefined);
+                .filter((addr): addr is PackAddress => addr !== undefined);
               const allSelected = roomPackAddresses.every((addr) =>
                 selected.find((address) => packAddressEqual(addr, address))
               );

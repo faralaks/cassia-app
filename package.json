@@ -1,7 +1,7 @@
 {
-  "name": "cinny",
+  "name": "cassia",
   "version": "4.12.2",
-  "description": "Yet another matrix client",
+  "description": "A Telegram Desktop inspired Matrix client, forked from Cinny",
   "main": "index.js",
   "type": "module",
   "engines": {
@@ -30,7 +30,7 @@
     }
   },
   "keywords": [],
-  "author": "Ajay Bura",
+  "author": "faralaks (fork of Cinny by Ajay Bura)",
   "license": "AGPL-3.0-only",
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "1.1.6",
@@ -67,9 +67,10 @@
     "jotai": "2.6.0",
     "linkify-react": "4.3.2",
     "linkifyjs": "4.3.2",
-    "matrix-js-sdk": "41.7.0",
+    "matrix-js-sdk": "41.5.0",
     "matrix-widget-api": "1.16.1",
     "millify": "6.1.0",
+    "motion": "12.40.0",
     "pdfjs-dist": "4.2.67",
     "prismjs": "1.30.0",
     "react": "18.2.0",
@@ -90,7 +91,7 @@
     "ua-parser-js": "1.0.35"
   },
   "devDependencies": {
-    "@element-hq/element-call-embedded": "0.20.1",
+    "@element-hq/element-call-embedded": "0.19.1",
     "@esbuild-plugins/node-globals-polyfill": "0.2.3",
     "@rollup/plugin-inject": "5.0.3",
     "@rollup/plugin-wasm": "6.1.1",
@@ -104,8 +105,8 @@
     "@types/react-google-recaptcha": "2.1.8",
     "@types/sanitize-html": "2.16.1",
     "@types/ua-parser-js": "0.7.36",
-    "@typescript-eslint/eslint-plugin": "5.46.1",
-    "@typescript-eslint/parser": "5.46.1",
+    "@typescript-eslint/eslint-plugin": "6.21.0",
+    "@typescript-eslint/parser": "6.21.0",
     "@vitejs/plugin-react": "4.2.0",
     "buffer": "6.0.3",
     "cz-conventional-changelog": "3.3.0",
@@ -119,7 +120,7 @@
     "husky": "9.1.7",
     "lint-staged": "16.3.2",
     "prettier": "2.8.1",
-    "typescript": "4.9.4",
+    "typescript": "5.4.5",
     "vite": "5.4.19",
     "vite-plugin-pwa": "0.20.5",
     "vite-plugin-static-copy": "1.0.4",

@@ -9,6 +9,28 @@ export const RoomViewFollowingPlaceholder = style([
   },
 ]);
 
+// Compact, transparent variant used inside the room header (under the name)
+// instead of the old full-width bar at the bottom of the timeline.
+export const RoomViewFollowingInline = style([
+  DefaultReset,
+  {
+    maxWidth: '100%',
+    background: 'none',
+    outline: 'none',
+    opacity: 0.6,
+    cursor: 'pointer',
+    selectors: {
+      '&:hover, &:focus-visible': {
+        opacity: 1,
+        color: color.Primary.Main,
+      },
+      '&:active': {
+        color: color.Primary.Main,
+      },
+    },
+  },
+]);
+
 export const RoomViewFollowing = recipe({
   base: [
     DefaultReset,

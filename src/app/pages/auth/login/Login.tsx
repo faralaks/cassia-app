@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Box, Text, color } from 'folds';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SSOAction } from 'matrix-js-sdk';
-import { useAuthFlows } from '../../../hooks/useAuthFlows';
+import { RegisterFlowStatus, useAuthFlows } from '../../../hooks/useAuthFlows';
 import { useAuthServer } from '../../../hooks/useAuthServer';
 import { useParsedLoginFlows } from '../../../hooks/useParsedLoginFlows';
 import { PasswordLoginForm } from './PasswordLoginForm';
@@ -37,7 +37,8 @@ const useLoginSearchParams = (searchParams: URLSearchParams): LoginPathSearchPar
 export function Login() {
   const server = useAuthServer();
   const { hashRouter } = useClientConfig();
-  const { loginFlows } = useAuthFlows();
+  const { loginFlows, registerFlows } = useAuthFlows();
+  const registrationAvailable = registerFlows.status !== RegisterFlowStatus.RegistrationDisabled;
   const [searchParams] = useSearchParams();
   const loginSearchParams = useLoginSearchParams(searchParams);
   const ssoRedirectUrl = usePathWithOrigin(getLoginPath(server));
@@ -91,9 +92,11 @@ export function Login() {
           <span data-spacing-node />
         </>
       )}
-      <Text align="Center">
-        Do not have an account? <Link to={getRegisterPath(server)}>Register</Link>
-      </Text>
+      {registrationAvailable && (
+        <Text align="Center">
+          Do not have an account? <Link to={getRegisterPath(server)}>Register</Link>
+        </Text>
+      )}
     </Box>
   );
 }

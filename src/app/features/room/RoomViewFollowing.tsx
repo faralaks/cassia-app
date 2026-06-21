@@ -28,11 +28,21 @@ export function RoomViewFollowingPlaceholder() {
   return <div className={css.RoomViewFollowingPlaceholder} />;
 }
 
+// User IDs (excluding self) whose read receipt sits on the latest rendered
+// event — i.e. who have "caught up" to the conversation.
+export const useRoomLatestReaders = (room: Room): string[] => {
+  const mx = useMatrixClient();
+  const latestEvent = useRoomLatestRenderedEvent(room);
+  const latestEventReaders = useRoomEventReaders(room, latestEvent?.getId());
+  return latestEventReaders.filter((readerId) => readerId !== mx.getUserId());
+};
+
 export type RoomViewFollowingProps = {
   room: Room;
+  inline?: boolean;
 };
 export const RoomViewFollowing = as<'div', RoomViewFollowingProps>(
-  ({ className, room, ...props }, ref) => {
+  ({ className, room, inline, ...props }, ref) => {
     const mx = useMatrixClient();
     const [open, setOpen] = useState(false);
     const latestEvent = useRoomLatestRenderedEvent(room);
@@ -68,9 +78,14 @@ export const RoomViewFollowing = as<'div', RoomViewFollowingProps>(
         <Box
           as={names.length > 0 ? 'button' : 'div'}
           onClick={names.length > 0 ? () => setOpen(true) : undefined}
-          className={classNames(css.RoomViewFollowing({ clickable: names.length > 0 }), className)}
+          className={classNames(
+            inline
+              ? css.RoomViewFollowingInline
+              : css.RoomViewFollowing({ clickable: names.length > 0 }),
+            className
+          )}
           alignItems="Center"
-          justifyContent="End"
+          justifyContent={inline ? 'Start' : 'End'}
           gap="200"
           {...props}
           ref={ref}
@@ -78,7 +93,7 @@ export const RoomViewFollowing = as<'div', RoomViewFollowingProps>(
           {names.length > 0 && (
             <>
               <Icon style={{ opacity: config.opacity.P300 }} size="100" src={Icons.CheckTwice} />
-              <Text size="T300" truncate>
+              <Text size={inline ? 'T200' : 'T300'} truncate>
                 {names.length === 1 && (
                   <>
                     <b>{names[0]}</b>

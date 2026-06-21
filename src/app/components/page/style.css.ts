@@ -3,13 +3,16 @@ import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
 import { DefaultReset, color, config, toRem } from 'folds';
 
 export const PageNav = recipe({
+  base: {
+    userSelect: 'none',
+  },
   variants: {
     size: {
       '400': {
-        width: toRem(256),
+        width: toRem(308),
       },
       '300': {
-        width: toRem(222),
+        width: toRem(266),
       },
     },
   },

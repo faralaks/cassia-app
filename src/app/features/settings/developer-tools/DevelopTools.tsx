@@ -25,7 +25,8 @@ export function DeveloperTools({ requestClose }: DeveloperToolsProps) {
 
   const submitAccountData: AccountDataSubmitCallback = useCallback(
     async (type, content) => {
-      await mx.setAccountData(type, content);
+      // Dev tool: type is an arbitrary user-entered account-data event type.
+      await mx.setAccountData(type as never, content as never);
     },
     [mx]
   );
@@ -34,7 +35,9 @@ export function DeveloperTools({ requestClose }: DeveloperToolsProps) {
     return (
       <AccountDataEditor
         type={accountDataType ?? undefined}
-        content={accountDataType ? mx.getAccountData(accountDataType)?.getContent() : undefined}
+        content={
+          accountDataType ? mx.getAccountData(accountDataType as never)?.getContent() : undefined
+        }
         submitChange={submitAccountData}
         requestClose={() => setAccountDataType(undefined)}
       />
