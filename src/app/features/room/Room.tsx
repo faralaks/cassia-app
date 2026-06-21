@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Box, Line } from 'folds';
 import { useParams } from 'react-router-dom';
 import { isKeyHotkey } from 'is-hotkey';
@@ -25,6 +25,10 @@ export function Room() {
   const { eventId } = useParams();
   const room = useRoom();
   const mx = useMatrixClient();
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('cassia:voice-play', { detail: { id: '__reset__' } }));
+  }, [room.roomId]);
 
   const callSession = useCallSession(room);
   const callMembers = useCallMembers(callSession);
