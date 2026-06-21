@@ -41,6 +41,7 @@ import {
   UsernameBold,
 } from '../../../components/message';
 import { UserAvatar } from '../../../components/user-avatar';
+import { nameInitials } from '../../../utils/common';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../../utils/matrix';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import {
@@ -203,7 +204,7 @@ function PinnedMessage({
                   : undefined
               }
               alt={displayName}
-              renderFallback={() => <Icon size="200" src={Icons.User} filled />}
+              renderFallback={() => <Text as="span" size="H6">{nameInitials(displayName)}</Text>}
             />
           </Avatar>
         </AvatarBase>

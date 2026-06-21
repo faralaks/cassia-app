@@ -1,8 +1,9 @@
 import React, { ReactNode } from 'react';
-import { as, Avatar, Box, Icon, Icons, Text } from 'folds';
+import { as, Avatar, Box, Text } from 'folds';
 import { MatrixClient, Room, RoomMember } from 'matrix-js-sdk';
 import { getMemberDisplayName } from '../../utils/room';
 import { getMxIdLocalPart } from '../../utils/matrix';
+import { nameInitials } from '../../utils/common';
 import { UserAvatar } from '../user-avatar';
 import * as css from './style.css';
 
@@ -28,12 +29,12 @@ export const MemberTile = as<'button', MemberTileProps>(
 
     return (
       <AsMemberTile className={css.MemberTile} {...props} ref={ref}>
-        <Avatar size="300" radii="400">
+        <Avatar size="300" radii="Pill">
           <UserAvatar
             userId={member.userId}
             src={avatarUrl ?? undefined}
             alt={name}
-            renderFallback={() => <Icon size="300" src={Icons.User} filled />}
+            renderFallback={() => <Text as="span" size="T300">{nameInitials(name)}</Text>}
           />
         </Avatar>
         <Box grow="Yes" as="span" direction="Column">

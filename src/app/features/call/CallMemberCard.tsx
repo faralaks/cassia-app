@@ -9,6 +9,7 @@ import { getMemberAvatarMxc, getMemberDisplayName } from '../../utils/room';
 import { useRoom } from '../../hooks/useRoom';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { UserAvatar } from '../../components/user-avatar';
+import { nameInitials } from '../../utils/common';
 import { getMouseEventCords } from '../../utils/dom';
 import * as css from './styles.css';
 
@@ -56,7 +57,7 @@ export function CallMemberCard({ member }: CallMemberCardProps) {
             userId={userId}
             src={avatarUrl}
             alt={name}
-            renderFallback={() => <Icon size="50" src={Icons.User} filled />}
+            renderFallback={() => <Text as="span" size="H6">{nameInitials(name)}</Text>}
           />
         </Avatar>
         <Box grow="Yes">

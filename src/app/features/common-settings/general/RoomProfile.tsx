@@ -29,7 +29,9 @@ import { mDirectAtom } from '../../../state/mDirectList';
 import { BreakWord, LineClamp3 } from '../../../styles/Text.css';
 import { LINKIFY_OPTS } from '../../../plugins/react-custom-html-parser';
 import { RoomAvatar, RoomIcon } from '../../../components/room-avatar';
-import { mxcUrlToHttp } from '../../../utils/matrix';
+import { guessDmRoomUserId, mxcUrlToHttp } from '../../../utils/matrix';
+import { getDirectRoomAvatarUrl } from '../../../utils/room';
+import { nameInitials } from '../../../utils/common';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { StateEvent } from '../../../../types/matrix/room';
@@ -192,7 +194,7 @@ export function RoomProfileEdit({
           )}
         </Box>
         <Box shrink="No">
-          <Avatar size="500" radii="300">
+          <Avatar size="500" radii="Pill">
             <RoomAvatar
               roomId={room.roomId}
               src={avatarUrl}
@@ -269,7 +271,10 @@ export function RoomProfile({ permissions }: RoomProfileProps) {
   const room = useRoom();
   const directs = useAtomValue(mDirectAtom);
 
-  const avatar = useRoomAvatar(room, directs.has(room.roomId));
+  const isDirect = directs.has(room.roomId);
+  const dmUserId = isDirect ? guessDmRoomUserId(room, mx.getSafeUserId()) : undefined;
+
+  const avatar = useRoomAvatar(room, isDirect);
   const name = useRoomName(room);
   const topic = useRoomTopic(room);
   const joinRule = useRoomJoinRule(room);
@@ -279,9 +284,14 @@ export function RoomProfile({ permissions }: RoomProfileProps) {
   const canEditTopic = permissions.stateEvent(StateEvent.RoomTopic, mx.getSafeUserId());
   const canEdit = canEditAvatar || canEditName || canEditTopic;
 
-  const avatarUrl = avatar
+  // For a DM, show the contact's portrait (custom override → matrix avatar →
+  // letter), keyed/colored by the peer's userId — like everywhere else.
+  const roomAvatarUrl = avatar
     ? mxcUrlToHttp(mx, avatar, useAuthentication, 96, 96, 'crop') ?? undefined
     : undefined;
+  const avatarUrl = isDirect
+    ? getDirectRoomAvatarUrl(mx, room, 96, useAuthentication)
+    : roomAvatarUrl;
 
   const [edit, setEdit] = useState(false);
 
@@ -335,19 +345,25 @@ export function RoomProfile({ permissions }: RoomProfileProps) {
               )}
             </Box>
             <Box shrink="No">
-              <Avatar size="500" radii="300">
+              <Avatar size="500" radii="Pill">
                 <RoomAvatar
                   roomId={room.roomId}
+                  colorId={dmUserId}
+                  overrideUserId={dmUserId}
                   src={avatarUrl}
                   alt={name}
-                  renderFallback={() => (
-                    <RoomIcon
-                      roomType={room.getType()}
-                      size="400"
-                      joinRule={joinRule?.join_rule ?? JoinRule.Invite}
-                      filled
-                    />
-                  )}
+                  renderFallback={() =>
+                    isDirect ? (
+                      <Text as="span" size="H4">{nameInitials(name)}</Text>
+                    ) : (
+                      <RoomIcon
+                        roomType={room.getType()}
+                        size="400"
+                        joinRule={joinRule?.join_rule ?? JoinRule.Invite}
+                        filled
+                      />
+                    )
+                  }
                 />
               </Avatar>
             </Box>

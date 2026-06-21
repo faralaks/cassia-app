@@ -38,7 +38,7 @@ export const UserAvatarContainer = style({
   backgroundColor: color.Surface.Container,
 });
 export const UserHeroAvatar = style({
-  outline: `${config.borderWidth.B600} solid ${color.Surface.Container}`,
+  boxShadow: `0 0 0 ${config.borderWidth.B600} ${color.Surface.Container}`,
   selectors: {
     'button&': {
       cursor: 'pointer',
@@ -51,4 +51,15 @@ export const UserHeroAvatarImg = style({
       filter: 'brightness(0.5)',
     },
   },
+});
+
+export const AvatarEditButton = style({
+  position: 'absolute',
+  right: 0,
+  bottom: 0,
+  transform: 'translate(15%, 15%)',
+  zIndex: 2,
+  borderRadius: config.radii.Pill,
+  backgroundColor: color.Surface.Container,
+  boxShadow: `0 0 0 ${config.borderWidth.B300} ${color.Surface.ContainerLine}`,
 });

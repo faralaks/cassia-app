@@ -1,6 +1,6 @@
 import React, { useEffect, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Editor } from 'slate';
-import { Avatar, Icon, Icons, MenuItem, Text } from 'folds';
+import { Avatar, MenuItem, Text } from 'folds';
 import { MatrixClient, Room, RoomMember } from 'matrix-js-sdk';
 
 import { AutocompleteQuery } from './autocompleteQuery';
@@ -18,6 +18,7 @@ import { useKeyDown } from '../../../hooks/useKeyDown';
 import { getMxIdLocalPart, getMxIdServer, isUserId } from '../../../utils/matrix';
 import { getMemberDisplayName, getMemberSearchStr } from '../../../utils/room';
 import { UserAvatar } from '../../user-avatar';
+import { nameInitials } from '../../../utils/common';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { Membership } from '../../../../types/matrix/room';
 
@@ -49,7 +50,7 @@ function UnknownMentionItem({
         <Avatar size="200">
           <UserAvatar
             userId={userId}
-            renderFallback={() => <Icon size="50" src={Icons.User} filled />}
+            renderFallback={() => <Text as="span" size="T200">{nameInitials(name)}</Text>}
           />
         </Avatar>
       }
@@ -177,7 +178,9 @@ export function UserMentionAutocomplete({
                     userId={roomMember.userId}
                     src={avatarUrl ?? undefined}
                     alt={getName(roomMember)}
-                    renderFallback={() => <Icon size="50" src={Icons.User} filled />}
+                    renderFallback={() => (
+                      <Text as="span" size="T200">{nameInitials(getName(roomMember))}</Text>
+                    )}
                   />
                 </Avatar>
               }

@@ -1,8 +1,9 @@
-import { Box, config, Icon, Icons, Text } from 'folds';
+import { Box, config, Text } from 'folds';
 import { CallMembership } from 'matrix-js-sdk/lib/matrixrtc/CallMembership';
 import React from 'react';
 import { Room } from 'matrix-js-sdk';
 import { UserAvatar } from '../../components/user-avatar';
+import { nameInitials } from '../../utils/common';
 import { getMemberAvatarMxc, getMemberDisplayName } from '../../utils/room';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
@@ -46,7 +47,7 @@ export function MemberGlance({ room, members, speakers, max = 6 }: MemberGlanceP
             variant="Background"
             size="200"
             radii="Pill"
-            onClick={(evt) =>
+            onClick={(evt: React.MouseEvent<HTMLButtonElement>) =>
               openUserProfile(
                 room.roomId,
                 undefined,
@@ -60,7 +61,7 @@ export function MemberGlance({ room, members, speakers, max = 6 }: MemberGlanceP
               userId={userId}
               src={avatarUrl}
               alt={name}
-              renderFallback={() => <Icon size="50" src={Icons.User} filled />}
+              renderFallback={() => <Text as="span" size="T200">{nameInitials(name)}</Text>}
             />
           </StackedAvatar>
         );

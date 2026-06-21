@@ -29,12 +29,13 @@ import { Opts as LinkifyOpts } from 'linkifyjs';
 import { useAtomValue } from 'jotai';
 import { Page, PageContent, PageContentCenter, PageHeader } from '../../../components/page';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
-import { getMxIdLocalPart, mxcUrlToHttp } from '../../../utils/matrix';
+import { getMxIdLocalPart, guessDmRoomUserId, mxcUrlToHttp } from '../../../utils/matrix';
 import { InboxNotificationsPathSearchParams } from '../../paths';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { SequenceCard } from '../../../components/sequence-card';
 import { RoomAvatar, RoomIcon } from '../../../components/room-avatar';
 import {
+  getDirectRoomAvatarUrl,
   getEditedEvent,
   getMemberAvatarMxc,
   getMemberDisplayName,
@@ -74,6 +75,7 @@ import { useRoomNavigate } from '../../../hooks/useRoomNavigate';
 import { useRoomUnread } from '../../../state/hooks/unread';
 import { roomToUnreadAtom } from '../../../state/room/roomToUnread';
 import { markAsRead } from '../../../utils/notifications';
+import { nameInitials } from '../../../utils/common';
 import { ContainerColor } from '../../../styles/ContainerColor.css';
 import { VirtualTile } from '../../../components/virtualizer';
 import { UserAvatar } from '../../../components/user-avatar';
@@ -225,6 +227,12 @@ function RoomNotificationsGroupComp({
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const unread = useRoomUnread(room.roomId, roomToUnreadAtom);
+
+  // For a DM group header, show the contact's portrait (override → matrix avatar
+  // → letter), keyed/colored by the peer's userId — like everywhere else.
+  const mDirects = useAtomValue(mDirectAtom);
+  const isDirect = mDirects.has(room.roomId);
+  const dmUserId = isDirect ? guessDmRoomUserId(room, mx.getSafeUserId()) : undefined;
 
   const powerLevels = usePowerLevels(room);
   const creators = useRoomCreators(room);
@@ -411,19 +419,29 @@ function RoomNotificationsGroupComp({
     <Box direction="Column" gap="200">
       <Header size="300">
         <Box gap="200" grow="Yes">
-          <Avatar size="200" radii="300">
+          <Avatar size="200" radii={isDirect ? 'Pill' : '300'}>
             <RoomAvatar
               roomId={room.roomId}
-              src={getRoomAvatarUrl(mx, room, 96, useAuthentication)}
+              colorId={dmUserId}
+              overrideUserId={dmUserId}
+              src={
+                isDirect
+                  ? getDirectRoomAvatarUrl(mx, room, 96, useAuthentication)
+                  : getRoomAvatarUrl(mx, room, 96, useAuthentication)
+              }
               alt={room.name}
-              renderFallback={() => (
-                <RoomIcon
-                  size="50"
-                  roomType={room.getType()}
-                  joinRule={room.getJoinRule() ?? JoinRule.Restricted}
-                  filled
-                />
-              )}
+              renderFallback={() =>
+                isDirect ? (
+                  <Text as="span" size="H6">{nameInitials(room.name)}</Text>
+                ) : (
+                  <RoomIcon
+                    size="50"
+                    roomType={room.getType()}
+                    joinRule={room.getJoinRule() ?? JoinRule.Restricted}
+                    filled
+                  />
+                )
+              }
             />
           </Avatar>
           <Text size="H4" truncate>
@@ -479,7 +497,7 @@ function RoomNotificationsGroupComp({
               <ModernLayout
                 before={
                   <AvatarBase>
-                    <Avatar size="300">
+                    <Avatar size="300" radii="Pill">
                       <UserAvatar
                         userId={event.sender}
                         src={
@@ -495,7 +513,9 @@ function RoomNotificationsGroupComp({
                             : undefined
                         }
                         alt={displayName}
-                        renderFallback={() => <Icon size="200" src={Icons.User} filled />}
+                        renderFallback={() => (
+                          <Text as="span" size="T300">{nameInitials(displayName)}</Text>
+                        )}
                       />
                     </Avatar>
                   </AvatarBase>

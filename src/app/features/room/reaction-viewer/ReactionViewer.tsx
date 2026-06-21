@@ -24,6 +24,7 @@ import { useRelations } from '../../../hooks/useRelations';
 import { Reaction } from '../../../components/message';
 import { getHexcodeForEmoji, getShortcodeFor } from '../../../plugins/emoji';
 import { UserAvatar } from '../../../components/user-avatar';
+import { nameInitials } from '../../../utils/common';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { useOpenUserRoomProfile } from '../../../state/hooks/userRoomProfile';
 import { useSpaceOptionally } from '../../../hooks/useSpace';
@@ -132,7 +133,7 @@ export const ReactionViewer = as<'div', ReactionViewerProps>(
                       key={senderId}
                       style={{ padding: `0 ${config.space.S200}` }}
                       radii="400"
-                      onClick={(event) => {
+                      onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
                         openProfile(
                           room.roomId,
                           space?.roomId,
@@ -147,7 +148,7 @@ export const ReactionViewer = as<'div', ReactionViewerProps>(
                             userId={senderId}
                             src={avatarUrl ?? undefined}
                             alt={name}
-                            renderFallback={() => <Icon size="50" src={Icons.User} filled />}
+                            renderFallback={() => <Text as="span" size="H6">{nameInitials(name)}</Text>}
                           />
                         </Avatar>
                       }

@@ -29,11 +29,16 @@ export const RoomIntro = as<'div', RoomIntroProps>(({ room, ...props }, ref) => 
   const mDirects = useAtomValue(mDirectAtom);
   const [invitePrompt, setInvitePrompt] = useState(false);
 
+  const isDirect = mDirects.has(room.roomId);
   const createEvent = getStateEvent(room, StateEvent.RoomCreate);
-  const avatarMxc = useRoomAvatar(room, mDirects.has(room.roomId));
+  const avatarMxc = useRoomAvatar(room, isDirect);
   const name = useRoomName(room);
   const topic = useRoomTopic(room);
   const avatarHttpUrl = avatarMxc ? mxcUrlToHttp(mx, avatarMxc, useAuthentication) : undefined;
+
+  const dmMemberId = isDirect
+    ? room.getJoinedMembers().find((m) => m.userId !== mx.getUserId())?.userId
+    : undefined;
 
   const createContent = createEvent?.getContent<IRoomCreateContent>();
   const ts = createEvent?.getTs();
@@ -51,9 +56,10 @@ export const RoomIntro = as<'div', RoomIntroProps>(({ room, ...props }, ref) => 
   return (
     <Box direction="Column" grow="Yes" gap="500" {...props} ref={ref}>
       <Box>
-        <Avatar size="500">
+        <Avatar size="500" radii="Pill">
           <RoomAvatar
             roomId={room.roomId}
+            colorId={dmMemberId}
             src={avatarHttpUrl ?? undefined}
             alt={name}
             renderFallback={() => <Text size="H2">{nameInitials(name)}</Text>}

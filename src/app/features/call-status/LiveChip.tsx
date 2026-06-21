@@ -25,6 +25,7 @@ import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { UserAvatar } from '../../components/user-avatar';
+import { nameInitials } from '../../utils/common';
 import { useOpenUserRoomProfile } from '../../state/hooks/userRoomProfile';
 import { getMouseEventCords } from '../../utils/dom';
 
@@ -87,7 +88,7 @@ export function LiveChip({ count, room, members }: LiveChipProps) {
                         variant="Surface"
                         radii="300"
                         style={{ paddingLeft: config.space.S200 }}
-                        onClick={(evt) =>
+                        onClick={(evt: React.MouseEvent<HTMLButtonElement>) =>
                           openUserProfile(
                             room.roomId,
                             undefined,
@@ -102,7 +103,7 @@ export function LiveChip({ count, room, members }: LiveChipProps) {
                               userId={userId}
                               src={avatarUrl}
                               alt={name}
-                              renderFallback={() => <Icon size="50" src={Icons.User} filled />}
+                              renderFallback={() => <Text as="span" size="T200">{nameInitials(name)}</Text>}
                             />
                           </Avatar>
                         }

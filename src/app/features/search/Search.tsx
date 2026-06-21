@@ -353,10 +353,12 @@ export function Search({ requestClose }: SearchProps) {
                             </Box>
                           }
                           before={
-                            <Avatar size="200" radii={dm ? '400' : '300'}>
+                            <Avatar size="200" radii={dm ? 'Pill' : '300'}>
                               {dm || room.isSpaceRoom() ? (
                                 <RoomAvatar
                                   roomId={room.roomId}
+                                  colorId={dmUserId || undefined}
+                                  overrideUserId={dmUserId || undefined}
                                   src={
                                     dm
                                       ? getDirectRoomAvatarUrl(mx, room, 32, useAuthentication)
