@@ -1,5 +1,5 @@
-import { keyframes, style } from '@vanilla-extract/css';
-import { config, toRem } from 'folds';
+import { globalStyle, keyframes, style } from '@vanilla-extract/css';
+import { color, config, toRem } from 'folds';
 
 export const MembersDrawer = style({
   width: toRem(266),
@@ -59,4 +59,30 @@ export const DrawerVirtualItem = style({
   top: 0,
   left: 0,
   width: '100%',
+});
+
+export const OpacitySlider = style({
+  flex: 1,
+  height: toRem(4),
+  borderRadius: toRem(2),
+  outline: 'none',
+  cursor: 'pointer',
+  WebkitAppearance: 'none' as any,
+  border: 'none',
+});
+
+globalStyle(`${OpacitySlider}::-webkit-slider-thumb`, {
+  WebkitAppearance: 'none' as any,
+  width: toRem(14),
+  height: toRem(14),
+  borderRadius: '50%',
+  backgroundColor: color.Primary.Main,
+  cursor: 'pointer',
+  border: 'none',
+  boxShadow: `0 0 0 2px ${color.Primary.Container}`,
+});
+
+globalStyle(`${OpacitySlider}::-webkit-slider-runnable-track`, {
+  height: toRem(4),
+  borderRadius: toRem(2),
 });

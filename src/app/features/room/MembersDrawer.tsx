@@ -42,6 +42,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { TypingIndicator } from '../../components/typing-indicator';
 import { getMemberDisplayName, getMemberSearchStr } from '../../utils/room';
 import { getMxIdLocalPart } from '../../utils/matrix';
+import { nameInitials } from '../../utils/common';
 import { useSetSetting, useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
 import { millify } from '../../plugins/millify';
@@ -59,6 +60,7 @@ import { useSpaceOptionally } from '../../hooks/useSpace';
 import { ContainerColor } from '../../styles/ContainerColor.css';
 import { useFlattenPowerTagMembers, useGetMemberPowerTag } from '../../hooks/useMemberPowerTag';
 import { useRoomCreators } from '../../hooks/useRoomCreators';
+import { useRoomLatestReaders } from './RoomViewFollowing';
 
 type MemberDrawerHeaderProps = {
   room: Room;
@@ -109,6 +111,7 @@ type MemberItemProps = {
   onClick: MouseEventHandler<HTMLButtonElement>;
   pressed?: boolean;
   typing?: boolean;
+  caughtUp?: boolean;
 };
 function MemberItem({
   mx,
@@ -118,6 +121,7 @@ function MemberItem({
   onClick,
   pressed,
   typing,
+  caughtUp,
 }: MemberItemProps) {
   const name =
     getMemberDisplayName(room, member.userId) ?? getMxIdLocalPart(member.userId) ?? member.userId;
@@ -135,20 +139,30 @@ function MemberItem({
       radii="400"
       onClick={onClick}
       before={
-        <Avatar size="200">
+        <Avatar size="200" radii="Pill">
           <UserAvatar
             userId={member.userId}
             src={avatarUrl ?? undefined}
             alt={name}
-            renderFallback={() => <Icon size="50" src={Icons.User} filled />}
+            renderFallback={() => (
+              <Text as="span" size="T200">{nameInitials(name)}</Text>
+            )}
           />
         </Avatar>
       }
       after={
-        typing && (
+        typing ? (
           <Badge size="300" variant="Secondary" fill="Soft" radii="Pill" outlined>
             <TypingIndicator size="300" />
           </Badge>
+        ) : (
+          caughtUp && (
+            <Icon
+              size="100"
+              src={Icons.CheckTwice}
+              style={{ opacity: config.opacity.P300 }}
+            />
+          )
         )
       }
     >
@@ -202,6 +216,10 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
   const memberPowerSort = useMemberPowerSort(creators, getPowerLevel);
 
   const typingMembers = useRoomTypingMember(room.roomId);
+
+  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const latestReaders = useRoomLatestReaders(room);
+  const readerSet = useMemo(() => new Set(latestReaders), [latestReaders]);
 
   const filteredMembers = useMemo(
     () => members.filter(membershipFilter.filterFn).sort(memberSort.sortFn).sort(memberPowerSort),
@@ -419,6 +437,7 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                         member={tagOrMember}
                         onClick={handleMemberClick}
                         pressed={openProfileUserId === tagOrMember.userId}
+                        caughtUp={!hideActivity && readerSet.has(tagOrMember.userId)}
                         typing={typingMembers.some(
                           (receipt) => receipt.userId === tagOrMember.userId
                         )}

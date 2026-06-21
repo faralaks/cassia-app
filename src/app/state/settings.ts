@@ -35,6 +35,9 @@ export interface Settings {
   hideMembershipEvents: boolean;
   hideNickAvatarEvents: boolean;
   mediaAutoLoad: boolean;
+  compressImages: boolean;
+  imageUploadLimitMB: number;
+  imageCompressQuality: number;
   urlPreview: boolean;
   encUrlPreview: boolean;
   showHiddenEvents: boolean;
@@ -61,14 +64,17 @@ const defaultSettings: Settings = {
   pageZoom: 100,
   hideActivity: false,
 
-  isPeopleDrawer: true,
+  isPeopleDrawer: false,
   memberSortFilterIndex: 0,
   enterForNewline: false,
-  messageLayout: 0,
+  messageLayout: 2,
   messageSpacing: '400',
   hideMembershipEvents: false,
   hideNickAvatarEvents: true,
   mediaAutoLoad: true,
+  compressImages: true,
+  imageUploadLimitMB: 5,
+  imageCompressQuality: 0.85,
   urlPreview: true,
   encUrlPreview: false,
   showHiddenEvents: false,
@@ -83,12 +89,13 @@ const defaultSettings: Settings = {
   developerTools: false,
 };
 
-export const getSettings = () => {
+export const getSettings = (): Settings => {
   const settings = localStorage.getItem(STORAGE_KEY);
-  if (settings === null) return defaultSettings;
+  const stored = settings === null ? {} : (JSON.parse(settings) as Partial<Settings>);
   return {
     ...defaultSettings,
-    ...(JSON.parse(settings) as Settings),
+    ...stored,
+    messageLayout: MessageLayout.Bubble,
   };
 };
 

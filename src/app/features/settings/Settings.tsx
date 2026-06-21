@@ -16,6 +16,7 @@ import {
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
 import { General } from './general';
+import { ChatStylePage } from './chat-style';
 import { PageNav, PageNavContent, PageNavHeader, PageRoot } from '../../components/page';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 import { Account } from './account';
@@ -36,6 +37,7 @@ import { LogoutDialog } from '../../components/LogoutDialog';
 
 export enum SettingsPages {
   GeneralPage,
+  ChatStylePage,
   AccountPage,
   NotificationPage,
   DevicesPage,
@@ -57,6 +59,11 @@ const useSettingsMenuItems = (): SettingsMenuItem[] =>
         page: SettingsPages.GeneralPage,
         name: 'General',
         icon: Icons.Setting,
+      },
+      {
+        page: SettingsPages.ChatStylePage,
+        name: 'Chat Style',
+        icon: Icons.Photo,
       },
       {
         page: SettingsPages.AccountPage,
@@ -128,7 +135,7 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
           <PageNav size="300">
             <PageNavHeader outlined={false}>
               <Box grow="Yes" gap="200">
-                <Avatar size="200" radii="300">
+                <Avatar size="200" radii="Pill">
                   <UserAvatar
                     userId={userId}
                     src={avatarUrl}
@@ -212,6 +219,9 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
     >
       {activePage === SettingsPages.GeneralPage && (
         <General requestClose={handlePageRequestClose} />
+      )}
+      {activePage === SettingsPages.ChatStylePage && (
+        <ChatStylePage requestClose={handlePageRequestClose} />
       )}
       {activePage === SettingsPages.AccountPage && (
         <Account requestClose={handlePageRequestClose} />
