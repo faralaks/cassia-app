@@ -4,6 +4,7 @@ import { MsgType } from 'matrix-js-sdk';
 export const MATRIX_BLUR_HASH_PROPERTY_NAME = 'xyz.amorgan.blurhash';
 export const MATRIX_SPOILER_PROPERTY_NAME = 'page.codeberg.everypizza.msc4193.spoiler';
 export const MATRIX_SPOILER_REASON_PROPERTY_NAME = 'page.codeberg.everypizza.msc4193.spoiler.reason';
+export const MATRIX_MSC1767_AUDIO_PROPERTY_NAME = 'org.matrix.msc1767.audio';
 
 export type IImageInfo = {
   w?: number;
@@ -64,6 +65,11 @@ export type IVideoContent = {
   [MATRIX_SPOILER_REASON_PROPERTY_NAME]?: string;
 };
 
+export type IMSC1767AudioContent = {
+  duration?: number;
+  waveform?: number[];
+};
+
 export type IAudioContent = {
   msgtype: MsgType.Audio;
   body?: string;
@@ -71,6 +77,7 @@ export type IAudioContent = {
   url?: string;
   info?: IAudioInfo;
   file?: IEncryptedFile;
+  [MATRIX_MSC1767_AUDIO_PROPERTY_NAME]?: IMSC1767AudioContent;
 };
 
 export type IFileContent = {
