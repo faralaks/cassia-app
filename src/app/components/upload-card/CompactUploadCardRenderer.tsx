@@ -6,6 +6,8 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { TUploadContent } from '../../utils/matrix';
 import { bytesToSize, getFileTypeIcon } from '../../utils/common';
 import { useMediaConfig } from '../../hooks/useMediaConfig';
+import { useSetting } from '../../state/hooks/settings';
+import { settingsAtom } from '../../state/settings';
 
 type CompactUploadCardRendererProps = {
   isEncrypted?: boolean;
@@ -21,7 +23,11 @@ export function CompactUploadCardRenderer({
 }: CompactUploadCardRendererProps) {
   const mx = useMatrixClient();
   const mediaConfig = useMediaConfig();
-  const allowSize = mediaConfig['m.upload.size'] || Infinity;
+  const [imageUploadLimitMB] = useSetting(settingsAtom, 'imageUploadLimitMB');
+  const allowSize = Math.min(
+    mediaConfig['m.upload.size'] || Infinity,
+    imageUploadLimitMB * 1024 * 1024
+  );
 
   const { upload, startUpload, cancelUpload } = useBindUploadAtom(mx, uploadAtom, isEncrypted);
   const { file } = upload;

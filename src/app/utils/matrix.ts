@@ -163,10 +163,23 @@ export const uploadContent = async (
     const data = await uploadPromise;
     const mxc = data.content_uri;
     if (mxc) onSuccess(mxc);
-    else onError(new MatrixError(data));
+    else
+      onError(
+        new MatrixError({
+          errcode: 'M_UNKNOWN',
+          error: 'Upload failed: the server did not return a media URL.',
+        })
+      );
   } catch (e: any) {
-    const error = typeof e?.message === 'string' ? e.message : undefined;
-    const errcode = typeof e?.name === 'string' ? e.message : undefined;
+    // A 413 (and most proxy rejections) come back without CORS headers, so the
+    // browser hides the real status and the SDK is left with an empty/opaque
+    // error. Surface something actionable instead of "Unknown message".
+    const isMatrixError = typeof e?.errcode === 'string';
+    const error =
+      isMatrixError && typeof e?.message === 'string' && e.message.trim()
+        ? e.message
+        : 'Upload failed. The file may be too large or was rejected by the server.';
+    const errcode = isMatrixError ? e.errcode : undefined;
     onError(new MatrixError({ error, errcode }));
   }
 };
