@@ -33,6 +33,7 @@ import {
 } from '../../../components/nav';
 import {
   encodeSearchParamValueArray,
+  getDirectCreatePath,
   getExplorePath,
   getHomeCreatePath,
   getHomeRoomPath,
@@ -129,16 +130,75 @@ function HomeHeader() {
             </Text>
           </Box>
           <Box alignItems="Center" gap="100">
-            <IconButton
-              title="Create Room"
-              variant="Background"
-              radii="300"
-              size="300"
-              aria-pressed={createRoomSelected}
-              onClick={() => navigate(getHomeCreatePath())}
-            >
-              <Icon src={Icons.Plus} size="200" />
-            </IconButton>
+            <UseStateProvider<RectCords | undefined> initial={undefined}>
+              {(createAnchor, setCreateAnchor) => (
+                <PopOut
+                  anchor={createAnchor}
+                  position="Bottom"
+                  align="Start"
+                  offset={6}
+                  content={
+                    <FocusTrap
+                      focusTrapOptions={{
+                        initialFocus: false,
+                        returnFocusOnDeactivate: false,
+                        onDeactivate: () => setCreateAnchor(undefined),
+                        clickOutsideDeactivates: true,
+                        isKeyForward: (evt: KeyboardEvent) => evt.key === 'ArrowDown',
+                        isKeyBackward: (evt: KeyboardEvent) => evt.key === 'ArrowUp',
+                        escapeDeactivates: stopPropagation,
+                      }}
+                    >
+                      <Menu style={{ maxWidth: toRem(180), width: '100vw' }}>
+                        <Box direction="Column" gap="100" style={{ padding: config.space.S100 }}>
+                          <MenuItem
+                            size="300"
+                            radii="300"
+                            after={<Icon size="100" src={Icons.User} />}
+                            onClick={() => {
+                              setCreateAnchor(undefined);
+                              navigate(getDirectCreatePath());
+                            }}
+                          >
+                            <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+                              Create Direct
+                            </Text>
+                          </MenuItem>
+                          <MenuItem
+                            size="300"
+                            radii="300"
+                            after={<Icon size="100" src={Icons.Hash} />}
+                            onClick={() => {
+                              setCreateAnchor(undefined);
+                              navigate(getHomeCreatePath());
+                            }}
+                          >
+                            <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+                              Create Room
+                            </Text>
+                          </MenuItem>
+                        </Box>
+                      </Menu>
+                    </FocusTrap>
+                  }
+                >
+                  <IconButton
+                    title="Create"
+                    variant="Background"
+                    radii="300"
+                    size="300"
+                    aria-pressed={!!createAnchor || createRoomSelected}
+                    onClick={(evt: React.MouseEvent<HTMLButtonElement>) =>
+                      setCreateAnchor(
+                        createAnchor ? undefined : evt.currentTarget.getBoundingClientRect()
+                      )
+                    }
+                  >
+                    <Icon src={Icons.Plus} size="200" />
+                  </IconButton>
+                </PopOut>
+              )}
+            </UseStateProvider>
             <UseStateProvider initial={false}>
               {(open, setOpen) => (
                 <>
