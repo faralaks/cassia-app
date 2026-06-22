@@ -106,12 +106,20 @@ export function InviteUserPrompt({ room, requestClose }: InviteUserProps) {
     const reasonInput = target?.reasonInput as HTMLTextAreaElement | undefined;
     const reason = reasonInput?.value.trim();
 
-    invite(validUserId, reason || undefined).then(() => {
-      if (alive()) {
-        handleReset();
-        if (reasonInput) reasonInput.value = '';
-      }
-    });
+    invite(validUserId, reason || undefined)
+      .then(() => {
+        // Only runs on success — useAsyncCallback re-throws on error (the
+        // failure is shown via inviteState). Close the dialog once invited.
+        if (alive()) {
+          handleReset();
+          if (reasonInput) reasonInput.value = '';
+          requestClose();
+        }
+      })
+      .catch(() => {
+        // Error is surfaced through inviteState; swallow the rejection so it
+        // isn't logged as unhandled.
+      });
   };
 
   const handleSearchChange: ChangeEventHandler<HTMLInputElement> = (evt) => {
