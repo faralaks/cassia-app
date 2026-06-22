@@ -134,6 +134,23 @@ jobs:
           name: dist
           path: dist
 
+      - name: Set preferred homeserver in config.json
+        # Cloudflare-only: patch the served config's preferredHomeserver from the
+        # CUSTOM_HOMESERVER secret (same field the Docker entrypoint sets at
+        # runtime). Touches only this job's copy of the artifact, not the Docker
+        # image. No-op if the secret is unset.
+        env:
+          CUSTOM_HOMESERVER: ${{ secrets.CUSTOM_HOMESERVER }}
+        run: |
+          if [ -n "$CUSTOM_HOMESERVER" ]; then
+            echo "Setting preferredHomeserver=$CUSTOM_HOMESERVER"
+            tmp="$(mktemp)"
+            jq --arg hs "$CUSTOM_HOMESERVER" '.preferredHomeserver = $hs' dist/config.json > "$tmp"
+            mv "$tmp" dist/config.json
+          else
+            echo "CUSTOM_HOMESERVER not set — leaving config.json as-is"
+          fi
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:

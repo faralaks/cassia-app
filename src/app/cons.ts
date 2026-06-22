@@ -18,4 +18,9 @@ export const RELEASES_URL = `${REPO_URL}/releases`;
 // on the login page (instead of matrix.org) and added as the first suggested
 // server. When empty (''), it is ignored entirely. Just the server name, e.g.
 // 'matrix.example.org'.
+//
+// Build-time fallback only. Both deploy paths instead set the preferred server
+// at the config.json layer (the `preferredHomeserver` field), which overrides
+// this: the Docker entrypoint patches it at container start, and the Cloudflare
+// deploy patches it in dist/config.json before upload.
 export const DEFAULT_HOMESERVER = '';
