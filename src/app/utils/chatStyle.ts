@@ -31,6 +31,7 @@ export const DEFAULT_BG_IMAGE_LIGHT = lightBgImage;
 // own for that theme group. Each ships a bundled background + preferred colors.
 export const BUILTIN_DEFAULT_STYLE_DARK: ChatStyle = {
   bgImage: darkBgImage,
+  bgDim: 0.1,
   incomingColor: '#242424',
   incomingOpacity: 0.8,
   outgoingColor: '#2e7d32',
@@ -42,6 +43,7 @@ export const BUILTIN_DEFAULT_STYLE_DARK: ChatStyle = {
 };
 export const BUILTIN_DEFAULT_STYLE_LIGHT: ChatStyle = {
   bgImage: lightBgImage,
+  bgDim: 0.1,
   incomingColor: '#606060',
   incomingOpacity: 0.8,
   outgoingColor: '#2e7d32',
