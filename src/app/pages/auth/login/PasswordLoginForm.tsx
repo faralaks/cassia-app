@@ -260,6 +260,14 @@ export function PasswordLoginForm({ defaultUsername, defaultEmail }: PasswordLog
           Login
         </Text>
       </Button>
+      <Text
+        align="Center"
+        size="T200"
+        priority="300"
+        style={{ marginTop: config.space.S100 }}
+      >
+        By logging in you agree to use this client at your own risk.
+      </Text>
 
       <Overlay
         open={

@@ -11,6 +11,7 @@ import {
 import classNames from 'classnames';
 
 import { AuthFooter } from './AuthFooter';
+import { DisclaimerPopup } from './DisclaimerPopup';
 import * as css from './styles.css';
 import * as PatternsCss from '../../styles/Patterns.css';
 import {
@@ -212,6 +213,7 @@ export function AuthLayout() {
         </Box>
         <AuthFooter />
       </Box>
+      <DisclaimerPopup />
     </Scroll>
   );
 }

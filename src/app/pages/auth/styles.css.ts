@@ -51,3 +51,24 @@ export const AuthCardContent = style({
 export const AuthFooter = style({
   padding: config.space.S200,
 });
+
+export const DisclaimerPopup = style({
+  position: 'fixed',
+  right: config.space.S400,
+  bottom: config.space.S400,
+  zIndex: 10,
+  maxWidth: toRem(360),
+  width: `calc(100vw - ${config.space.S700})`,
+  backgroundColor: color.Surface.Container,
+  color: color.Surface.OnContainer,
+  borderRadius: config.radii.R400,
+  boxShadow: config.shadow.E200,
+  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+  overflow: 'hidden',
+});
+
+export const DisclaimerHeader = style({
+  paddingLeft: config.space.S300,
+  paddingRight: config.space.S200,
+  borderBottomWidth: config.borderWidth.B300,
+});
