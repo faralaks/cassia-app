@@ -47,7 +47,7 @@ export function About({ requestClose }: AboutProps) {
                   <Box direction="Column" gap="100">
                     <Box gap="100" alignItems="End">
                       <Text size="H3">Cassia</Text>
-                      <Text size="T200">v{APP_VERSION}</Text>
+                      <Text size="T200">{APP_VERSION}</Text>
                     </Box>
                     <Text>A Telegram Desktop inspired Matrix client.</Text>
                   </Box>
