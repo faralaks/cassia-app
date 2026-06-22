@@ -23,10 +23,6 @@ const copyFiles = {
       rename: 'pdf.worker.min.js',
     },
     {
-      src: 'netlify.toml',
-      dest: '',
-    },
-    {
       src: 'config.json',
       dest: '',
     },
@@ -137,7 +133,9 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // No source maps in the published build — they'd let anyone reconstruct the
+    // original source and bloat the upload. Flip to true locally if debugging.
+    sourcemap: false,
     copyPublicDir: false,
     rollupOptions: {
       plugins: [inject({ Buffer: ['buffer', 'Buffer'] })],
