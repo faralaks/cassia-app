@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, Text, IconButton, Icon, Icons, Scroll } from 'folds';
+import { Box, Text, Scroll } from 'folds';
 import { Page, PageContent, PageHeader } from '../../../components/page';
+import { SettingsPageCloseButton } from '../../../components/SettingsPageCloseButton';
 import { SystemNotification } from './SystemNotification';
 import { AllMessagesNotifications } from './AllMessages';
 import { SpecialMessagesNotifications } from './SpecialMessages';
@@ -22,11 +23,7 @@ export function Notifications({ requestClose }: NotificationsProps) {
               Notifications
             </Text>
           </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
+          <SettingsPageCloseButton onClose={requestClose} />
         </Box>
       </PageHeader>
       <Box grow="Yes">

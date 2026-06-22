@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Box, Text, IconButton, Icon, Icons, Scroll } from 'folds';
+import { Box, Text, Scroll } from 'folds';
 import { Page, PageContent, PageHeader } from '../../../components/page';
+import { SettingsPageCloseButton } from '../../../components/SettingsPageCloseButton';
 import { GlobalPacks } from './GlobalPacks';
 import { UserPack } from './UserPack';
 import { ImagePack } from '../../../plugins/custom-emoji';
@@ -29,11 +30,7 @@ export function EmojisStickers({ requestClose }: EmojisStickersProps) {
               Emojis & Stickers
             </Text>
           </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
+          <SettingsPageCloseButton onClose={requestClose} />
         </Box>
       </PageHeader>
       <Box grow="Yes">

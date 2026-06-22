@@ -31,6 +31,7 @@ import { Devices } from './devices';
 import { EmojisStickers } from './emojis-stickers';
 import { DeveloperTools } from './developer-tools';
 import { About } from './about';
+import { SettingsCloseAllProvider } from '../../components/SettingsPageCloseButton';
 import { UseStateProvider } from '../../components/UseStateProvider';
 import { stopPropagation } from '../../utils/keyboard';
 import { LogoutDialog } from '../../components/LogoutDialog';
@@ -162,15 +163,22 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
                       key={item.name}
                       variant="Background"
                       radii="400"
+                      size={screenSize === ScreenSize.Mobile ? '400' : '300'}
                       aria-pressed={activePage === item.page}
-                      before={<Icon src={item.icon} size="100" filled={activePage === item.page} />}
+                      before={
+                        <Icon
+                          src={item.icon}
+                          size={screenSize === ScreenSize.Mobile ? '200' : '100'}
+                          filled={activePage === item.page}
+                        />
+                      }
                       onClick={() => setActivePage(item.page)}
                     >
                       <Text
                         style={{
                           fontWeight: activePage === item.page ? config.fontWeight.W600 : undefined,
                         }}
-                        size="T300"
+                        size={screenSize === ScreenSize.Mobile ? 'T400' : 'T300'}
                         truncate
                       >
                         {item.name}
@@ -217,28 +225,30 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
         )
       }
     >
-      {activePage === SettingsPages.GeneralPage && (
-        <General requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.ChatStylePage && (
-        <ChatStylePage requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.AccountPage && (
-        <Account requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.NotificationPage && (
-        <Notifications requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.DevicesPage && (
-        <Devices requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.EmojisStickersPage && (
-        <EmojisStickers requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.DeveloperToolsPage && (
-        <DeveloperTools requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SettingsPages.AboutPage && <About requestClose={handlePageRequestClose} />}
+      <SettingsCloseAllProvider closeAll={requestClose}>
+        {activePage === SettingsPages.GeneralPage && (
+          <General requestClose={handlePageRequestClose} />
+        )}
+        {activePage === SettingsPages.ChatStylePage && (
+          <ChatStylePage requestClose={handlePageRequestClose} />
+        )}
+        {activePage === SettingsPages.AccountPage && (
+          <Account requestClose={handlePageRequestClose} />
+        )}
+        {activePage === SettingsPages.NotificationPage && (
+          <Notifications requestClose={handlePageRequestClose} />
+        )}
+        {activePage === SettingsPages.DevicesPage && (
+          <Devices requestClose={handlePageRequestClose} />
+        )}
+        {activePage === SettingsPages.EmojisStickersPage && (
+          <EmojisStickers requestClose={handlePageRequestClose} />
+        )}
+        {activePage === SettingsPages.DeveloperToolsPage && (
+          <DeveloperTools requestClose={handlePageRequestClose} />
+        )}
+        {activePage === SettingsPages.AboutPage && <About requestClose={handlePageRequestClose} />}
+      </SettingsCloseAllProvider>
     </PageRoot>
   );
 }

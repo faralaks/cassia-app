@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
-import { Box, Icon, IconButton, Icons, Scroll, Text } from 'folds';
+import { Box, Scroll, Text } from 'folds';
 import { Page, PageContent, PageHeader } from '../../../components/page';
+import { SettingsPageCloseButton } from '../../../components/SettingsPageCloseButton';
 import { defaultStyleAtom, themeGroupAtom } from '../../../state/room/roomStyles';
 import { ChatStyleEditor } from './ChatStyleEditor';
 import { builtinDefaultStyle, ChatStyle, clearDefaultStyle } from '../../../utils/chatStyle';
@@ -28,13 +29,11 @@ export function ChatStylePage({ requestClose }: ChatStylePageProps) {
       <PageHeader outlined={false}>
         <Box grow="Yes" gap="200">
           <Box grow="Yes" alignItems="Center" gap="200">
-            <Text size="H3" truncate>Chat Style</Text>
+            <Text size="H3" truncate>
+              Chat Style
+            </Text>
           </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
+          <SettingsPageCloseButton onClose={requestClose} />
         </Box>
       </PageHeader>
       <Box grow="Yes">
@@ -43,7 +42,8 @@ export function ChatStylePage({ requestClose }: ChatStylePageProps) {
             <Box direction="Column" gap="500">
               <Box direction="Column" gap="100">
                 <Text size="T300" style={{ opacity: 0.6 }}>
-                  Defaults applied to all chats. Per-chat settings (in a room&apos;s settings) take priority.
+                  Defaults applied to all chats. Per-chat settings (in a room&apos;s settings) take
+                  priority.
                 </Text>
               </Box>
               <ChatStyleEditor

@@ -30,6 +30,7 @@ import {
 import { isKeyHotkey } from 'is-hotkey';
 import FocusTrap from 'focus-trap-react';
 import { Page, PageContent, PageHeader } from '../../../components/page';
+import { SettingsPageCloseButton } from '../../../components/SettingsPageCloseButton';
 import { SequenceCard } from '../../../components/sequence-card';
 import { useSetting } from '../../../state/hooks/settings';
 import { DateFormat, MessageSpacing, settingsAtom } from '../../../state/settings';
@@ -1093,11 +1094,7 @@ export function General({ requestClose }: GeneralProps) {
               General
             </Text>
           </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
+          <SettingsPageCloseButton onClose={requestClose} />
         </Box>
       </PageHeader>
       <Box grow="Yes">

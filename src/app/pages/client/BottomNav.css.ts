@@ -1,0 +1,64 @@
+import { style } from '@vanilla-extract/css';
+import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
+import { color, config, DefaultReset, toRem } from 'folds';
+
+export const BottomNav = style([
+  DefaultReset,
+  {
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'stretch',
+    justifyContent: 'space-around',
+    height: toRem(56),
+    paddingBottom: 'env(safe-area-inset-bottom)',
+    backgroundColor: color.Background.Container,
+    borderTop: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
+    color: color.Background.OnContainer,
+    zIndex: config.zIndex.Z100,
+  },
+]);
+
+export const BottomNavItem = recipe({
+  base: [
+    DefaultReset,
+    {
+      flexGrow: 1,
+      flexBasis: 0,
+      minWidth: 0,
+      position: 'relative',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: toRem(2),
+      cursor: 'pointer',
+      color: color.Background.OnContainer,
+
+      selectors: {
+        '&:active': {
+          backgroundColor: color.Background.ContainerActive,
+        },
+      },
+    },
+  ],
+  variants: {
+    active: {
+      true: {
+        color: color.Primary.Main,
+      },
+    },
+  },
+});
+export type BottomNavItemVariants = RecipeVariants<typeof BottomNavItem>;
+
+export const BottomNavItemBadge = style([
+  DefaultReset,
+  {
+    pointerEvents: 'none',
+    position: 'absolute',
+    zIndex: 1,
+    top: toRem(4),
+    left: 'calc(50% + 6px)',
+    lineHeight: 0,
+  },
+]);

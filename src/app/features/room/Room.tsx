@@ -16,6 +16,8 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useRoomMembers } from '../../hooks/useRoomMembers';
 import { CallView } from '../call/CallView';
 import { RoomViewHeader } from './RoomViewHeader';
+import { BackRouteHandler } from '../../components/BackRouteHandler';
+import { SwipeToGoBack } from '../../components/SwipeToGoBack';
 import { callChatAtom } from '../../state/callEmbed';
 import { CallChatView } from './CallChatView';
 import { useCallEmbed } from '../../hooks/useCallEmbed';
@@ -57,7 +59,8 @@ export function Room() {
 
   return (
     <PowerLevelsContextProvider value={powerLevels}>
-      <Box grow="Yes">
+      <Box grow="Yes" style={{ position: 'relative' }}>
+        <BackRouteHandler>{(goBack) => <SwipeToGoBack onBack={goBack} />}</BackRouteHandler>
         {callView && (screenSize === ScreenSize.Desktop || !chat) && (
           <Box grow="Yes" direction="Column">
             <RoomViewHeader callView />

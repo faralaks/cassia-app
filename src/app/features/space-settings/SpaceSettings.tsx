@@ -3,6 +3,7 @@ import { useAtomValue } from 'jotai';
 import { Avatar, Box, config, Icon, IconButton, Icons, IconSrc, MenuItem, Text } from 'folds';
 import { JoinRule } from 'matrix-js-sdk';
 import { PageNav, PageNavContent, PageNavHeader, PageRoot } from '../../components/page';
+import { SettingsCloseAllProvider } from '../../components/SettingsPageCloseButton';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { mxcUrlToHttp } from '../../utils/matrix';
@@ -153,21 +154,23 @@ export function SpaceSettings({ initialPage, requestClose }: SpaceSettingsProps)
         )
       }
     >
-      {activePage === SpaceSettingsPage.GeneralPage && (
-        <General requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SpaceSettingsPage.MembersPage && (
-        <Members requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SpaceSettingsPage.PermissionsPage && (
-        <Permissions requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SpaceSettingsPage.EmojisStickersPage && (
-        <EmojisStickers requestClose={handlePageRequestClose} />
-      )}
-      {activePage === SpaceSettingsPage.DeveloperToolsPage && (
-        <DeveloperTools requestClose={handlePageRequestClose} />
-      )}
+      <SettingsCloseAllProvider closeAll={requestClose}>
+        {activePage === SpaceSettingsPage.GeneralPage && (
+          <General requestClose={handlePageRequestClose} />
+        )}
+        {activePage === SpaceSettingsPage.MembersPage && (
+          <Members requestClose={handlePageRequestClose} />
+        )}
+        {activePage === SpaceSettingsPage.PermissionsPage && (
+          <Permissions requestClose={handlePageRequestClose} />
+        )}
+        {activePage === SpaceSettingsPage.EmojisStickersPage && (
+          <EmojisStickers requestClose={handlePageRequestClose} />
+        )}
+        {activePage === SpaceSettingsPage.DeveloperToolsPage && (
+          <DeveloperTools requestClose={handlePageRequestClose} />
+        )}
+      </SettingsCloseAllProvider>
     </PageRoot>
   );
 }

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, Text, IconButton, Icon, Icons, Scroll, Button, config, toRem } from 'folds';
+import { Box, Text, Icon, Icons, Scroll, Button, config, toRem } from 'folds';
 import { Page, PageContent, PageHeader } from '../../../components/page';
+import { SettingsPageCloseButton } from '../../../components/SettingsPageCloseButton';
 import { SequenceCard } from '../../../components/sequence-card';
 import { SequenceCardStyle } from '../styles.css';
 import { SettingTile } from '../../../components/setting-tile';
@@ -24,11 +25,7 @@ export function About({ requestClose }: AboutProps) {
               About
             </Text>
           </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
+          <SettingsPageCloseButton onClose={requestClose} />
         </Box>
       </PageHeader>
       <Box grow="Yes">
@@ -84,9 +81,9 @@ export function About({ requestClose }: AboutProps) {
                       reviewed or verified by a human. Expect rough edges and the occasional bug.
                     </Text>
                     <Text size="T300">
-                      If you use this client, you do so at your own risk. There is no warranty,
-                      and the maintainer is not responsible for any data loss, security issues, or
-                      other problems that may result from using it.
+                      If you use this client, you do so at your own risk. There is no warranty, and
+                      the maintainer is not responsible for any data loss, security issues, or other
+                      problems that may result from using it.
                     </Text>
                   </Box>
                 </SequenceCard>
@@ -160,8 +157,7 @@ export function About({ requestClose }: AboutProps) {
                         >
                           AGPL-3.0
                         </a>
-                        . Huge thanks to the Cinny team for building such a solid base to fork
-                        from.
+                        . Huge thanks to the Cinny team for building such a solid base to fork from.
                       </Text>
                     </li>
                     <li>
@@ -274,8 +270,7 @@ export function About({ requestClose }: AboutProps) {
                     </li>
                     <li>
                       <Text size="T300">
-                        The app logo and the default chat background images were generated
-                        with{' '}
+                        The app logo and the default chat background images were generated with{' '}
                         <a
                           href="https://gemini.google.com"
                           target="_blank"

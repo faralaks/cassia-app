@@ -1,23 +1,30 @@
 import { ReactNode } from 'react';
-import { useMatch } from 'react-router-dom';
+import { useMatch, useParams } from 'react-router-dom';
 import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
-import { DIRECT_PATH, EXPLORE_PATH, HOME_PATH, INBOX_PATH, SPACE_PATH } from './paths';
 
 type MobileFriendlyClientNavProps = {
   children: ReactNode;
 };
 export function MobileFriendlyClientNav({ children }: MobileFriendlyClientNavProps) {
   const screenSize = useScreenSizeContext();
-  const homeMatch = useMatch({ path: HOME_PATH, caseSensitive: true, end: true });
-  const directMatch = useMatch({ path: DIRECT_PATH, caseSensitive: true, end: true });
-  const spaceMatch = useMatch({ path: SPACE_PATH, caseSensitive: true, end: true });
-  const exploreMatch = useMatch({ path: EXPLORE_PATH, caseSensitive: true, end: true });
-  const inboxMatch = useMatch({ path: INBOX_PATH, caseSensitive: true, end: true });
 
-  if (
-    screenSize === ScreenSize.Mobile &&
-    !(homeMatch || directMatch || spaceMatch || exploreMatch || inboxMatch)
-  ) {
+  // On mobile the vertical left rail is replaced by the bottom bar, so it is
+  // never shown. Desktop/tablet keep the rail as-is.
+  if (screenSize === ScreenSize.Mobile) {
+    return null;
+  }
+
+  return children;
+}
+
+export function MobileFriendlyBottomNav({ children }: MobileFriendlyClientNavProps) {
+  const screenSize = useScreenSizeContext();
+  // A room/chat is open whenever the route carries a room param. The composer
+  // lives there, so hide the bar to give it the full width — every other
+  // (list-level) screen, including explore/inbox sub-pages, keeps the bar.
+  const { roomIdOrAlias } = useParams();
+
+  if (screenSize !== ScreenSize.Mobile || roomIdOrAlias) {
     return null;
   }
 

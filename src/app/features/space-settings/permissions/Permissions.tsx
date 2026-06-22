@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Box, Icon, IconButton, Icons, Scroll, Text } from 'folds';
+import { Box, Scroll, Text } from 'folds';
 import { Page, PageContent, PageHeader } from '../../../components/page';
+import { SettingsPageCloseButton } from '../../../components/SettingsPageCloseButton';
 import { useRoom } from '../../../hooks/useRoom';
 import { usePowerLevels } from '../../../hooks/usePowerLevels';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
@@ -44,11 +45,7 @@ export function Permissions({ requestClose }: PermissionsProps) {
               Permissions
             </Text>
           </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
+          <SettingsPageCloseButton onClose={requestClose} />
         </Box>
       </PageHeader>
       <Box grow="Yes">

@@ -24,6 +24,7 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { RoomMember } from 'matrix-js-sdk';
 import { Page, PageContent, PageHeader } from '../../../components/page';
+import { SettingsPageCloseButton } from '../../../components/SettingsPageCloseButton';
 import { useRoom } from '../../../hooks/useRoom';
 import { useRoomMembers } from '../../../hooks/useRoomMembers';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
@@ -160,11 +161,7 @@ export function Members({ requestClose }: MembersProps) {
               {room.getJoinedMemberCount()} Members
             </Text>
           </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
+          <SettingsPageCloseButton onClose={requestClose} />
         </Box>
       </PageHeader>
       <Box grow="Yes" style={{ position: 'relative' }}>

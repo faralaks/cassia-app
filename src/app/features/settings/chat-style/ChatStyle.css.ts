@@ -1,5 +1,6 @@
 import { style } from '@vanilla-extract/css';
 import { color, toRem } from 'folds';
+import { MOBILE_BREAKPOINT } from '../../../hooks/useScreenSize';
 
 export const RangeSlider = style({
   flexGrow: 1,
@@ -103,4 +104,29 @@ export const HexInput = style({
 export const SectionDivider = style({
   height: 1,
   background: 'rgba(255, 255, 255, 0.08)',
+});
+
+// Background row: image + "Upload image" chip + Dim slider in one line on
+// desktop. On mobile the line would overflow (slider runs off the edge, chip
+// wraps), so the slider drops onto its own full-width line below.
+export const BackgroundRow = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: toRem(12),
+  flexWrap: 'wrap',
+});
+
+export const BackgroundDim = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: toRem(8),
+  flexGrow: 1,
+  minWidth: toRem(160),
+
+  '@media': {
+    [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
+      // Force onto its own line, full width, under the image/upload controls.
+      flexBasis: '100%',
+    },
+  },
 });

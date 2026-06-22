@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, Text, IconButton, Icon, Icons, Scroll } from 'folds';
+import { Box, Text, Scroll } from 'folds';
 import { Page, PageContent, PageHeader } from '../../../components/page';
+import { SettingsPageCloseButton } from '../../../components/SettingsPageCloseButton';
 import { MatrixId } from './MatrixId';
 import { Profile } from './Profile';
 import { ContactInformation } from './ContactInfo';
@@ -19,11 +20,7 @@ export function Account({ requestClose }: AccountProps) {
               Account
             </Text>
           </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
+          <SettingsPageCloseButton onClose={requestClose} />
         </Box>
       </PageHeader>
       <Box grow="Yes">

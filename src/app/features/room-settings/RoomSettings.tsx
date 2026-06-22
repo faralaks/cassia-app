@@ -3,6 +3,7 @@ import { useAtomValue } from 'jotai';
 import { Avatar, Box, config, Icon, IconButton, Icons, IconSrc, MenuItem, Text } from 'folds';
 import { JoinRule } from 'matrix-js-sdk';
 import { PageNav, PageNavContent, PageNavHeader, PageRoot } from '../../components/page';
+import { SettingsCloseAllProvider } from '../../components/SettingsPageCloseButton';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { mxcUrlToHttp } from '../../utils/matrix';
@@ -159,24 +160,26 @@ export function RoomSettings({ initialPage, requestClose }: RoomSettingsProps) {
         )
       }
     >
-      {activePage === RoomSettingsPage.GeneralPage && (
-        <General requestClose={handlePageRequestClose} />
-      )}
-      {activePage === RoomSettingsPage.ChatStylePage && (
-        <ChatStylePage requestClose={handlePageRequestClose} />
-      )}
-      {activePage === RoomSettingsPage.MembersPage && (
-        <Members requestClose={handlePageRequestClose} />
-      )}
-      {activePage === RoomSettingsPage.PermissionsPage && (
-        <Permissions requestClose={handlePageRequestClose} />
-      )}
-      {activePage === RoomSettingsPage.EmojisStickersPage && (
-        <EmojisStickers requestClose={handlePageRequestClose} />
-      )}
-      {activePage === RoomSettingsPage.DeveloperToolsPage && (
-        <DeveloperTools requestClose={handlePageRequestClose} />
-      )}
+      <SettingsCloseAllProvider closeAll={requestClose}>
+        {activePage === RoomSettingsPage.GeneralPage && (
+          <General requestClose={handlePageRequestClose} />
+        )}
+        {activePage === RoomSettingsPage.ChatStylePage && (
+          <ChatStylePage requestClose={handlePageRequestClose} />
+        )}
+        {activePage === RoomSettingsPage.MembersPage && (
+          <Members requestClose={handlePageRequestClose} />
+        )}
+        {activePage === RoomSettingsPage.PermissionsPage && (
+          <Permissions requestClose={handlePageRequestClose} />
+        )}
+        {activePage === RoomSettingsPage.EmojisStickersPage && (
+          <EmojisStickers requestClose={handlePageRequestClose} />
+        )}
+        {activePage === RoomSettingsPage.DeveloperToolsPage && (
+          <DeveloperTools requestClose={handlePageRequestClose} />
+        )}
+      </SettingsCloseAllProvider>
     </PageRoot>
   );
 }

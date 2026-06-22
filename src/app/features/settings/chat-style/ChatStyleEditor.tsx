@@ -282,7 +282,7 @@ export function ChatStyleEditor({
                 bgIsDefault ? 'Remove background (use plain color)' : 'Reset to default background'
               )}
           </Box>
-          <Box alignItems="Center" gap="300">
+          <div className={css.BackgroundRow}>
             <div
               onClick={() => fileRef.current?.click()}
               style={{
@@ -299,7 +299,7 @@ export function ChatStyleEditor({
             <Chip variant="Background" size="400" radii="300" onClick={() => fileRef.current?.click()}>
               <Text size="T200">Upload image</Text>
             </Chip>
-            <Box grow="Yes" alignItems="Center" gap="200" style={{ opacity: bgShowing ? 1 : 0.35 }}>
+            <div className={css.BackgroundDim} style={{ opacity: bgShowing ? 1 : 0.35 }}>
               <Text size="T200" style={{ opacity: 0.6, flexShrink: 0 }}>Dim</Text>
               <input type="range" min="0" max="80" value={dimPct}
                 disabled={!bgShowing}
@@ -307,8 +307,8 @@ export function ChatStyleEditor({
                 className={css.RangeSlider}
               />
               <Text size="T200" style={{ opacity: 0.6, flexShrink: 0, minWidth: 32 }}>{dimPct}%</Text>
-            </Box>
-          </Box>
+            </div>
+          </div>
         </Box>
 
         <div className={css.SectionDivider} />

@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { Box, Text, IconButton, Icon, Icons, Scroll, Switch, Button } from 'folds';
+import { Box, Text, Scroll, Switch, Button } from 'folds';
 import { Page, PageContent, PageHeader } from '../../../components/page';
+import { SettingsPageCloseButton } from '../../../components/SettingsPageCloseButton';
 import { SequenceCard } from '../../../components/sequence-card';
 import { SequenceCardStyle } from '../styles.css';
 import { SettingTile } from '../../../components/setting-tile';
@@ -53,11 +54,7 @@ export function DeveloperTools({ requestClose }: DeveloperToolsProps) {
               Developer Tools
             </Text>
           </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
+          <SettingsPageCloseButton onClose={requestClose} />
         </Box>
       </PageHeader>
       <Box grow="Yes">

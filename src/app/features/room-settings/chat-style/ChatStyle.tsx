@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
-import { Box, Icon, IconButton, Icons, Scroll, Text } from 'folds';
+import { Box, Scroll, Text } from 'folds';
 import { Page, PageContent, PageHeader } from '../../../components/page';
+import { SettingsPageCloseButton } from '../../../components/SettingsPageCloseButton';
 import { ChatStyleEditor } from '../../settings/chat-style/ChatStyleEditor';
 import { useRoom } from '../../../hooks/useRoom';
 import {
@@ -40,13 +41,11 @@ export function ChatStylePage({ requestClose }: RoomChatStylePageProps) {
       <PageHeader outlined={false}>
         <Box grow="Yes" gap="200">
           <Box grow="Yes" alignItems="Center" gap="200">
-            <Text size="H3" truncate>Chat Style</Text>
+            <Text size="H3" truncate>
+              Chat Style
+            </Text>
           </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
+          <SettingsPageCloseButton onClose={requestClose} />
         </Box>
       </PageHeader>
       <Box grow="Yes">
