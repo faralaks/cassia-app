@@ -1,0 +1,14 @@
+# Cloudflare Workers Static Assets config — serves the built SPA from dist/.
+# Used by the `wrangler deploy` step in .github/workflows/release.yml (and for
+# local `wrangler deploy` if ever needed). Assets-only: no Worker script, just
+# static hosting on Cloudflare's edge.
+#
+# not_found_handling = single-page-application → unmatched routes serve
+# index.html (200) so client-side routing / deep links work.
+
+name = "cassia-app"
+compatibility_date = "2026-06-22"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"

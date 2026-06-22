@@ -3,7 +3,7 @@ name: Release
 # On a two-part version tag (e.g. v1.0), build the static app ONCE and then fan
 # out in parallel to:
 #   - a multi-arch Docker image on ghcr.io (:1.0 and :latest)
-#   - a Cloudflare Pages deployment
+#   - a Cloudflare deployment (Workers Static Assets, the cassia-app Worker)
 #
 #   git tag v1.0
 #   git push origin v1.0
@@ -13,9 +13,9 @@ name: Release
 # and across both targets — it's built once here and reused, no rebuilds.
 #
 # Cloudflare needs two repository secrets (Settings -> Secrets and variables ->
-# Actions): CLOUDFLARE_API_TOKEN (with "Cloudflare Pages — Edit") and
-# CLOUDFLARE_ACCOUNT_ID, plus a Pages project named "cassia-app" whose
-# production branch is "main".
+# Actions): CLOUDFLARE_API_TOKEN (with the Workers/Pages edit permission) and
+# CLOUDFLARE_ACCOUNT_ID. Optional CUSTOM_HOMESERVER presets the login server.
+# `wrangler deploy` auto-creates/updates the cassia-app Worker (see wrangler.toml).
 
 on:
   push:
@@ -32,10 +32,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           cache: npm
@@ -53,7 +53,7 @@ jobs:
         run: npm run build
 
       - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist
@@ -71,22 +71,22 @@ jobs:
       IMAGE_NAME: ${{ github.repository }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -94,7 +94,7 @@ jobs:
 
       - name: Extract metadata (tags, labels)
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           # Strict two-part version tags. Capture the FULL version incl any
@@ -109,7 +109,7 @@ jobs:
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
       - name: Build and push (serve-only, just COPYs dist)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile.serve
@@ -120,7 +120,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── Deploy the same prebuilt dist/ to Cloudflare Pages ────────────────────
+  # ── Deploy the same prebuilt dist/ to Cloudflare (Workers Static Assets) ───
   cloudflare:
     needs: build
     runs-on: ubuntu-latest
@@ -128,8 +128,13 @@ jobs:
       contents: read
       deployments: write
     steps:
+      - name: Checkout
+        # Needed for wrangler.toml (the assets config); the build is reused via
+        # the artifact below, not rebuilt here.
+        uses: actions/checkout@v7
+
       - name: Download dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist
@@ -151,11 +156,14 @@ jobs:
             echo "CUSTOM_HOMESERVER not set — leaving config.json as-is"
           fi
 
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+      - name: Deploy to Cloudflare (Workers Static Assets)
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # --branch=main lands on production as long as the Pages project's
-          # production branch is "main" (the default for a new project).
-          command: pages deploy dist --project-name=cassia-app --branch=main
+          # Pin wrangler v4: the action defaults to an older v3 that doesn't
+          # support assets-only deploys / not_found_handling=single-page-application.
+          wranglerVersion: '4.103.0'
+          # `wrangler deploy` reads wrangler.toml ([assets] directory=./dist) and
+          # auto-creates/updates the cassia-app Worker serving the static SPA.
+          command: deploy
