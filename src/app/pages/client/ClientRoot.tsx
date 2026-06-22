@@ -21,6 +21,7 @@ import {
   clearLoginData,
   initClient,
   logoutClient,
+  reloadToHome,
   startClient,
 } from '../../../client/initMatrix';
 import { SplashScreen } from '../../components/splash-screen';
@@ -129,7 +130,7 @@ const useLogoutListener = (mx?: MatrixClient) => {
       mx?.stopClient();
       await mx?.clearStores();
       window.localStorage.clear();
-      window.location.reload();
+      reloadToHome();
     };
 
     mx?.on(HttpApiEvent.SessionLoggedOut, handleLogout);
