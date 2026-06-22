@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
-import { useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { useAtom, useAtomValue } from 'jotai';
+import { Membership } from '../../../../types/matrix/room';
 import { useSelectedRoom } from '../../../hooks/router/useSelectedRoom';
 import { IsDirectRoomProvider, RoomProvider } from '../../../hooks/useRoom';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
@@ -13,6 +14,8 @@ import { useSearchParamsViaServers } from '../../../hooks/router/useSearchParams
 import { mDirectAtom } from '../../../state/mDirectList';
 import { settingsAtom } from '../../../state/settings';
 import { useSetting } from '../../../state/hooks/settings';
+import { getSpaceLobbyPath } from '../../pathUtils';
+import { getCanonicalAliasOrRoomId } from '../../../utils/matrix';
 
 export function SpaceRouteRoomProvider({ children }: { children: ReactNode }) {
   const mx = useMatrixClient();
@@ -28,6 +31,15 @@ export function SpaceRouteRoomProvider({ children }: { children: ReactNode }) {
   const room = mx.getRoom(roomId);
 
   if (!room || !allRooms.includes(room.roomId)) {
+    // If we just left (or were removed from) this room, go back to the space
+    // lobby instead of showing its Join preview. The preview is only for rooms
+    // we were never in (e.g. opening a matrix.to link).
+    if (room && room.getMyMembership() === Membership.Leave) {
+      return (
+        <Navigate to={getSpaceLobbyPath(getCanonicalAliasOrRoomId(mx, space.roomId))} replace />
+      );
+    }
+
     // room is not joined
     return (
       <JoinBeforeNavigate
