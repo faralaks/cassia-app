@@ -1,0 +1,144 @@
+name: Release
+
+# On a two-part version tag (e.g. v1.0), build the static app ONCE and then fan
+# out in parallel to:
+#   - a multi-arch Docker image on ghcr.io (:1.0 and :latest)
+#   - a Cloudflare Pages deployment
+#
+#   git tag v1.0
+#   git push origin v1.0
+#
+# The tag is baked into the build as the app version (About / login screen).
+# The app is a static SPA, so the compiled dist/ is identical on every CPU arch
+# and across both targets — it's built once here and reused, no rebuilds.
+#
+# Cloudflare needs two repository secrets (Settings -> Secrets and variables ->
+# Actions): CLOUDFLARE_API_TOKEN (with "Cloudflare Pages — Edit") and
+# CLOUDFLARE_ACCOUNT_ID, plus a Pages project named "cassia-app" whose
+# production branch is "main".
+
+on:
+  push:
+    tags:
+      # Strict two-part version tags only: v1.0 (stable) and v1.0-beta (pre-release).
+      # GitHub tag filters are globs, not regex, so this is a coarse gate; the
+      # exact shape is enforced again by the type=match regex in the docker job.
+      - 'v[0-9]*.[0-9]*'
+      - 'v[0-9]*.[0-9]*-*'
+
+jobs:
+  # ── Build the static site once (native, fast), gated on typecheck ──────────
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        # Bake the tag (e.g. v1.0) into the app version.
+        env:
+          CASSIA_VERSION: ${{ github.ref_name }}
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 1
+
+  # ── Wrap the prebuilt dist/ in nginx → multi-arch image on ghcr ───────────
+  docker:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Strict two-part version tags. Capture the FULL version incl any
+          # -suffix and anchor with $, so:
+          #   v1.0       → :1.0
+          #   v1.0-beta  → :1.0-beta   (distinct, never clobbers :1.0)
+          #   v1.0.0     → no match (rejected)
+          # :latest moves only on stable tags (no '-' suffix), so a pre-release
+          # never becomes :latest.
+          tags: |
+            type=match,pattern=^v(\d+\.\d+(?:-.+)?)$,group=1
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - name: Build and push (serve-only, just COPYs dist)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.serve
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Deploy the same prebuilt dist/ to Cloudflare Pages ────────────────────
+  cloudflare:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # --branch=main lands on production as long as the Pages project's
+          # production branch is "main" (the default for a new project).
+          command: pages deploy dist --project-name=cassia-app --branch=main
