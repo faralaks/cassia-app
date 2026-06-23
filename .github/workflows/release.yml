@@ -3,9 +3,12 @@ name: Release
 # On a two-part version tag (e.g. v1.0), build the static app ONCE and then fan
 # out in parallel to:
 #   - a multi-arch Docker image on ghcr.io (:1.0 and :latest)
-#   - a Cloudflare deployment (Workers Static Assets, the cassia-app Worker)
+#   - a Cloudflare deployment (Workers Static Assets). The target Worker depends
+#     on the tag: stable v1.0 → cassia-app (production); pre-release v1.0-beta
+#     (any -suffix) → cassia-dev. Same build, different Worker.
 #
-#   git tag v1.0
+#   git tag v1.0        # → production (cassia-app)
+#   git tag v1.0-beta   # → dev (cassia-dev)
 #   git push origin v1.0
 #
 # The tag is baked into the build as the app version (About / login screen).
@@ -156,6 +159,20 @@ jobs:
             echo "CUSTOM_HOMESERVER not set — leaving config.json as-is"
           fi
 
+      - name: Pick Cloudflare target Worker from tag
+        # Stable tags (v1.0) deploy to the production Worker; pre-release tags
+        # with a -suffix (v1.0-beta) deploy to the separate dev Worker so betas
+        # never touch production. wrangler auto-creates the Worker if missing.
+        id: target
+        run: |
+          if [[ "${{ github.ref_name }}" == *-* ]]; then
+            echo "name=cassia-dev" >> "$GITHUB_OUTPUT"
+            echo "Pre-release tag → deploying to cassia-dev"
+          else
+            echo "name=cassia-app" >> "$GITHUB_OUTPUT"
+            echo "Stable tag → deploying to cassia-app"
+          fi
+
       - name: Deploy to Cloudflare (Workers Static Assets)
         uses: cloudflare/wrangler-action@v4
         with:
@@ -165,5 +182,6 @@ jobs:
           # support assets-only deploys / not_found_handling=single-page-application.
           wranglerVersion: '4.103.0'
           # `wrangler deploy` reads wrangler.toml ([assets] directory=./dist) and
-          # auto-creates/updates the cassia-app Worker serving the static SPA.
-          command: deploy
+          # --name overrides the Worker name so stable → cassia-app and
+          # pre-release → cassia-dev share one config but different Workers.
+          command: deploy --name ${{ steps.target.outputs.name }}
