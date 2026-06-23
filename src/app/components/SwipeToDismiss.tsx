@@ -30,7 +30,13 @@ export function SwipeToDismiss({ onDismiss, children }: SwipeToDismissProps) {
 
   return (
     <motion.div
-      style={{ display: 'flex' }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100%',
+        height: '100%',
+        minHeight: 0,
+      }}
       drag="y"
       dragDirectionLock
       dragConstraints={{ top: 0, bottom: 0 }}

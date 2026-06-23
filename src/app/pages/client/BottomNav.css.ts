@@ -33,10 +33,13 @@ export const BottomNavItem = recipe({
       gap: toRem(2),
       cursor: 'pointer',
       color: color.Background.OnContainer,
+      // Subtle press feedback (matches chat list rows).
+      transition: 'transform 120ms ease, background-color 120ms ease',
 
       selectors: {
         '&:active': {
           backgroundColor: color.Background.ContainerActive,
+          transform: 'scale(0.96)',
         },
       },
     },

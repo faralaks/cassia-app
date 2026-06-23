@@ -78,15 +78,13 @@ import { stopPropagation } from '../../../utils/keyboard';
 import { getMatrixToRoomEvent } from '../../../plugins/matrix-to';
 import { getViaServers } from '../../../plugins/via-servers';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
+import { useLongPress } from '../../../hooks/useLongPress';
 import { useRoomPinnedEvents } from '../../../hooks/useRoomPinnedEvents';
 import { MemberPowerTag, StateEvent } from '../../../../types/matrix/room';
 import { PowerIcon } from '../../../components/power';
 import colorMXID from '../../../../util/colorMXID';
 import { getPowerTagIconSrc } from '../../../hooks/useMemberPowerTag';
-import {
-  BubbleFooterContext,
-  BubbleFooterContextValue,
-} from '../../../hooks/useBubbleFooter';
+import { BubbleFooterContext, BubbleFooterContextValue } from '../../../hooks/useBubbleFooter';
 
 const formatBubbleTs = (ts: number, h24: boolean): string => {
   const now = new Date();
@@ -555,7 +553,9 @@ function MessageEditHistory({
     {
       ts: mEvent.getTs(),
       body:
-        typeof mEvent.getOriginalContent().body === 'string' ? (mEvent.getOriginalContent().body as string) : '',
+        typeof mEvent.getOriginalContent().body === 'string'
+          ? (mEvent.getOriginalContent().body as string)
+          : '',
     },
     ...edits.map((editEvt) => {
       const newContent = editEvt.getContent()['m.new_content'];
@@ -594,11 +594,7 @@ function MessageEditHistory({
               <Text size="L400" priority="300">
                 {index === 0 ? 'Original' : `Edit ${index}`}
               </Text>
-              <Time
-                ts={version.ts}
-                hour24Clock={hour24Clock}
-                dateFormatString={dateFormatString}
-              />
+              <Time ts={version.ts} hour24Clock={hour24Clock} dateFormatString={dateFormatString} />
             </Box>
             <Text style={{ whiteSpace: 'pre-wrap' }} size="T400">
               {version.body}
@@ -645,8 +641,8 @@ function MessageEditedIndicator({
                 hour24Clock={hour24Clock}
                 dateFormatString={dateFormatString}
                 requestClose={() => setOpen(false)}
-                />
-                </Dialog>
+              />
+            </Dialog>
           </FocusTrap>
         </OverlayCenter>
       </Overlay>
@@ -977,10 +973,10 @@ export const Message = as<'div', MessageProps>(
             }
             alt={senderDisplayName}
             renderFallback={() => (
-                <Text as="span" size="H6">
-                  {nameInitials(senderDisplayName)}
-                </Text>
-              )}
+              <Text as="span" size="H6">
+                {nameInitials(senderDisplayName)}
+              </Text>
+            )}
           />
         </Avatar>
       </AvatarBase>
@@ -1075,6 +1071,13 @@ export const Message = as<'div', MessageProps>(
       });
     };
 
+    // Touch devices have no right-click — a long press opens the same menu.
+    const longPress = useLongPress((x, y) => {
+      if (edit) return;
+      window.getSelection?.()?.removeAllRanges();
+      setMenuAnchor({ x, y, width: 0, height: 0 });
+    });
+
     const handleBubbleDoubleClick: MouseEventHandler<HTMLDivElement> = useCallback(
       (evt) => {
         if (edit) return;
@@ -1086,9 +1089,10 @@ export const Message = as<'div', MessageProps>(
         const fakeTarget = {
           getAttribute: (name: string) => (name === 'data-event-id' ? evtId : null),
         };
-        onReplyClick(
-          { ...evt, currentTarget: fakeTarget } as unknown as React.MouseEvent<HTMLButtonElement>
-        );
+        onReplyClick({
+          ...evt,
+          currentTarget: fakeTarget,
+        } as unknown as React.MouseEvent<HTMLButtonElement>);
       },
       [edit, mEvent, onReplyClick]
     );
@@ -1213,16 +1217,16 @@ export const Message = as<'div', MessageProps>(
                   offset={menuAnchor?.width === 0 ? 0 : undefined}
                   content={
                     <FocusTrap
-                    focusTrapOptions={{
-                    initialFocus: false,
-                    returnFocusOnDeactivate: false,
-                    onDeactivate: () => setMenuAnchor(undefined),
-                    clickOutsideDeactivates: true,
-                    isKeyForward: (evt: KeyboardEvent) => evt.key === 'ArrowDown',
-                    isKeyBackward: (evt: KeyboardEvent) => evt.key === 'ArrowUp',
-                      escapeDeactivates: stopPropagation,
+                      focusTrapOptions={{
+                        initialFocus: false,
+                        returnFocusOnDeactivate: false,
+                        onDeactivate: () => setMenuAnchor(undefined),
+                        clickOutsideDeactivates: true,
+                        isKeyForward: (evt: KeyboardEvent) => evt.key === 'ArrowDown',
+                        isKeyBackward: (evt: KeyboardEvent) => evt.key === 'ArrowUp',
+                        escapeDeactivates: stopPropagation,
                       }}
-                      >
+                    >
                       <Menu>
                         {canSendReaction && (
                           <MessageQuickReactions
@@ -1378,7 +1382,7 @@ export const Message = as<'div', MessageProps>(
           </div>
         )}
         {messageLayout === MessageLayout.Compact && (
-          <CompactLayout before={headerJSX} onContextMenu={handleContextMenu}>
+          <CompactLayout before={headerJSX} onContextMenu={handleContextMenu} {...longPress}>
             {msgContentJSX}
           </CompactLayout>
         )}
@@ -1386,7 +1390,36 @@ export const Message = as<'div', MessageProps>(
           <BubbleLayout
             before={isOwn ? undefined : avatarJSX}
             hideBubble={isMediaBubble}
-            header={headerJSX ? (
+            header={
+              headerJSX ? (
+                <Box
+                  as="span"
+                  alignItems="Center"
+                  gap="200"
+                  style={{
+                    backgroundColor: 'rgba(0,0,0,0.25)',
+                    borderRadius: '999px',
+                    padding: '1px 6px',
+                    display: 'inline-flex',
+                  }}
+                >
+                  {headerJSX}
+                </Box>
+              ) : undefined
+            }
+            onContextMenu={handleContextMenu}
+            onDoubleClick={handleBubbleDoubleClick}
+            isOwn={isOwn}
+            data-event-id={mEvent.getId()}
+            data-selected={!!menuAnchor || !!emojiBoardAnchor ? 'true' : undefined}
+            {...longPress}
+          >
+            {msgContentJSX}
+          </BubbleLayout>
+        )}
+        {messageLayout !== MessageLayout.Compact && messageLayout !== MessageLayout.Bubble && (
+          <ModernLayout before={avatarJSX} onContextMenu={handleContextMenu} {...longPress}>
+            {headerJSX && (
               <Box
                 as="span"
                 alignItems="Center"
@@ -1396,38 +1429,12 @@ export const Message = as<'div', MessageProps>(
                   borderRadius: '999px',
                   padding: '1px 6px',
                   display: 'inline-flex',
+                  alignSelf: 'flex-start',
                 }}
               >
                 {headerJSX}
               </Box>
-            ) : undefined}
-            onContextMenu={handleContextMenu}
-            onDoubleClick={handleBubbleDoubleClick}
-            isOwn={isOwn}
-            data-event-id={mEvent.getId()}
-            data-selected={!!menuAnchor || !!emojiBoardAnchor ? 'true' : undefined}
-          >
-            {msgContentJSX}
-          </BubbleLayout>
-        )}
-        {messageLayout !== MessageLayout.Compact && messageLayout !== MessageLayout.Bubble && (
-          <ModernLayout before={avatarJSX} onContextMenu={handleContextMenu}>
-            {headerJSX && (
-        <Box
-          as="span"
-          alignItems="Center"
-          gap="200"
-          style={{
-            backgroundColor: 'rgba(0,0,0,0.25)',
-            borderRadius: '999px',
-            padding: '1px 6px',
-            display: 'inline-flex',
-            alignSelf: 'flex-start',
-          }}
-        >
-          {headerJSX}
-        </Box>
-      )}
+            )}
             {msgContentJSX}
           </ModernLayout>
         )}

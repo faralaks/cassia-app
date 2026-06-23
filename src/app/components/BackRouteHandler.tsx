@@ -1,5 +1,5 @@
 import { ReactNode, useCallback } from 'react';
-import { matchPath, useLocation, useNavigate } from 'react-router-dom';
+import { matchPath, useLocation } from 'react-router-dom';
 import {
   getDirectPath,
   getExplorePath,
@@ -8,12 +8,13 @@ import {
   getSpacePath,
 } from '../pages/pathUtils';
 import { DIRECT_PATH, EXPLORE_PATH, HOME_PATH, INBOX_PATH, SPACE_PATH } from '../pages/paths';
+import { useMobileViewTransitionNavigate } from '../hooks/useMobileViewTransition';
 
 type BackRouteHandlerProps = {
   children: (onBack: () => void) => ReactNode;
 };
 export function BackRouteHandler({ children }: BackRouteHandlerProps) {
-  const navigate = useNavigate();
+  const navigate = useMobileViewTransitionNavigate();
   const location = useLocation();
 
   const goBack = useCallback(() => {
@@ -27,7 +28,7 @@ export function BackRouteHandler({ children }: BackRouteHandlerProps) {
         location.pathname
       )
     ) {
-      navigate(getHomePath());
+      navigate(getHomePath(), 'back');
       return;
     }
     if (
@@ -40,7 +41,7 @@ export function BackRouteHandler({ children }: BackRouteHandlerProps) {
         location.pathname
       )
     ) {
-      navigate(getDirectPath());
+      navigate(getDirectPath(), 'back');
       return;
     }
     const spaceMatch = matchPath(
@@ -56,7 +57,7 @@ export function BackRouteHandler({ children }: BackRouteHandlerProps) {
       encodedSpaceIdOrAlias && decodeURIComponent(encodedSpaceIdOrAlias);
 
     if (decodedSpaceIdOrAlias) {
-      navigate(getSpacePath(decodedSpaceIdOrAlias));
+      navigate(getSpacePath(decodedSpaceIdOrAlias), 'back');
       return;
     }
     if (
@@ -69,7 +70,7 @@ export function BackRouteHandler({ children }: BackRouteHandlerProps) {
         location.pathname
       )
     ) {
-      navigate(getExplorePath());
+      navigate(getExplorePath(), 'back');
       return;
     }
     if (
@@ -82,7 +83,7 @@ export function BackRouteHandler({ children }: BackRouteHandlerProps) {
         location.pathname
       )
     ) {
-      navigate(getInboxPath());
+      navigate(getInboxPath(), 'back');
     }
   }, [navigate, location]);
 

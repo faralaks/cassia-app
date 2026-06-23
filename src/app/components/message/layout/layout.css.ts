@@ -77,6 +77,16 @@ export const MessageBase = recipe({
       marginTop: SpacingVar,
       padding: `${config.space.S100} ${config.space.S200} ${config.space.S100} ${config.space.S400}`,
       borderRadius: `0 ${config.radii.R400} ${config.radii.R400} 0`,
+
+      '@media': {
+        // On phones tighten the horizontal insets so bubbles hug their own edge
+        // (outgoing → right, incoming → left) instead of floating with a wide
+        // gutter. Small symmetric padding keeps a touch of breathing room.
+        [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
+          paddingLeft: config.space.S200,
+          paddingRight: config.space.S200,
+        },
+      },
     },
   ],
   variants: {
@@ -143,9 +153,14 @@ export const BubbleContent = style({
   '@media': {
     // On phones cap the bubble at 75% of the row so it never spans the screen,
     // and shrink the message text a touch so long messages fit comfortably.
+    // Also disable text selection / the iOS long-press callout so a tap-and-hold
+    // opens the message menu instead of starting a selection.
     [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
       maxWidth: '75vw',
       fontSize: toRem(14),
+      WebkitTouchCallout: 'none',
+      WebkitUserSelect: 'none',
+      userSelect: 'none',
     },
   },
 });

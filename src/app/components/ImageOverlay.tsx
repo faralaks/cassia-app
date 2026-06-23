@@ -3,6 +3,7 @@ import { as, Modal, Overlay, OverlayBackdrop, OverlayCenter } from 'folds';
 import React, { ReactNode } from 'react';
 import { ModalWide } from '../styles/Modal.css';
 import { stopPropagation } from '../utils/keyboard';
+import { SwipeToDismiss } from './SwipeToDismiss';
 
 export type RenderViewerProps = {
   src: string;
@@ -32,11 +33,13 @@ export const ImageOverlay = as<'div', ImageOverlayProps>(
             size="500"
             onContextMenu={(evt: any) => evt.stopPropagation()}
           >
-            {renderViewer({
-              src,
-              alt,
-              requestClose,
-            })}
+            <SwipeToDismiss onDismiss={requestClose}>
+              {renderViewer({
+                src,
+                alt,
+                requestClose,
+              })}
+            </SwipeToDismiss>
           </Modal>
         </FocusTrap>
       </OverlayCenter>

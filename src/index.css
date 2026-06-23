@@ -55,6 +55,17 @@ body {
   overscroll-behavior: none;
 }
 
+/*
+ * Inner scrollers (folds <Scroll> sets these data attrs at runtime) get native
+ * momentum + an elastic bounce when they overflow, contained so the bounce
+ * never chains up to the locked page.
+ */
+[data-y-scrollbar-width],
+[data-x-scrollbar-width] {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -68,11 +79,16 @@ body {
   font-variant-ligatures: no-contextual;
 }
 /*
- * #root height tracks --app-height when set by the VisualViewport handler
- * (keyboard open), falling back to the dynamic viewport. This keeps the bottom
- * composer above the iOS keyboard instead of behind it.
+ * #root is pinned to the visible viewport. Height tracks --app-height and top
+ * tracks --app-offset-top (both set by the VisualViewport handler) so that when
+ * the iOS keyboard opens, the app shrinks and stays aligned with the visible
+ * area — the composer rides up, the page itself never scrolls. Falls back to
+ * the dynamic viewport when the handler / API is unavailable.
  */
 #root {
+  position: fixed;
+  left: 0;
+  top: var(--app-offset-top, 0px);
   width: 100%;
   height: 100%;
   height: 100dvh;
@@ -87,6 +103,36 @@ body {
   box-sizing: border-box;
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * Native-feel touch behavior. Taps should not double-tap-zoom (also removes the
+ * residual tap delay). Default text stays selectable so message text can be
+ * copied — we only disable selection/callout on interactive chrome below.
+ */
+body {
+  touch-action: manipulation;
+}
+
+/* Interactive chrome should not be text-selectable or show the iOS long-press
+   callout — that reads as "this is a web page". Buttons/links/nav only; this
+   deliberately does NOT cover message text or inputs. */
+button,
+a,
+[role='button'],
+[role='switch'],
+[role='tab'],
+label {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Avoid sticky focus rings left after a tap; keep them for keyboard users. */
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+[role='button']:focus:not(:focus-visible) {
+  outline: none;
 }
 a {
   color: var(--tc-link);
@@ -170,5 +216,89 @@ button[role='switch'] > span {
   button[role='switch'],
   button[role='switch'] > span {
     transition: none;
+  }
+}
+
+/* Reduced motion: keep tap feedback as a colour change only, no scale. */
+@media (prefers-reduced-motion: reduce) {
+  *:active {
+    transform: none !important;
+  }
+}
+
+/*
+ * Mobile screen slide transitions (View Transitions API). Only active when
+ * <html data-vt-mobile> is set (the app is in mobile mode and the browser
+ * supports view transitions). Direction comes from data-vt: "forward" slides
+ * the new screen in from the right, "back" slides it out to the right.
+ * Unsupported browsers ignore all of this and navigate instantly.
+ */
+html[data-vt-mobile]::view-transition-group(root) {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Forward: old screen drifts slightly left, new screen slides in from the right. */
+html[data-vt-mobile][data-vt='forward']::view-transition-old(root) {
+  animation: vt-slide-out-left 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+html[data-vt-mobile][data-vt='forward']::view-transition-new(root) {
+  animation: vt-slide-in-right 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Back: old screen slides out to the right, new screen comes from the left. */
+html[data-vt-mobile][data-vt='back']::view-transition-old(root) {
+  animation: vt-slide-out-right 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+html[data-vt-mobile][data-vt='back']::view-transition-new(root) {
+  animation: vt-slide-in-left 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Fade: peer tab switches (no clear forward/back), a quick cross-fade. */
+html[data-vt-mobile][data-vt='fade']::view-transition-old(root) {
+  animation: vt-fade-out 180ms ease both;
+}
+html[data-vt-mobile][data-vt='fade']::view-transition-new(root) {
+  animation: vt-fade-in 180ms ease both;
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes vt-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes vt-slide-out-left {
+  to {
+    transform: translateX(-25%);
+    opacity: 0.6;
+  }
+}
+@keyframes vt-slide-in-left {
+  from {
+    transform: translateX(-25%);
+    opacity: 0.6;
+  }
+}
+@keyframes vt-slide-out-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* No view-transition animation when the user prefers reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-vt-mobile]::view-transition-old(root),
+  html[data-vt-mobile]::view-transition-new(root) {
+    animation: none !important;
   }
 }
