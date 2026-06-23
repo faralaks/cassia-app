@@ -36,6 +36,9 @@ export function SwipeToDismiss({ onDismiss, children }: SwipeToDismissProps) {
         width: '100%',
         height: '100%',
         minHeight: 0,
+        // Mark as a gesture surface so the page touchmove-guard lets the drag
+        // through and the browser doesn't hijack the vertical gesture.
+        touchAction: 'pan-y',
       }}
       drag="y"
       dragDirectionLock

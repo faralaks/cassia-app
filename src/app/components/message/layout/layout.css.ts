@@ -79,12 +79,12 @@ export const MessageBase = recipe({
       borderRadius: `0 ${config.radii.R400} ${config.radii.R400} 0`,
 
       '@media': {
-        // On phones tighten the horizontal insets so bubbles hug their own edge
-        // (outgoing → right, incoming → left) instead of floating with a wide
-        // gutter. Small symmetric padding keeps a touch of breathing room.
+        // On phones bubbles should almost touch their own edge (outgoing →
+        // right, incoming → left) — the default gutter wastes width. Keep a
+        // hairline inset so they don't visually collide with the screen edge.
         [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
-          paddingLeft: config.space.S200,
-          paddingRight: config.space.S200,
+          paddingLeft: config.space.S100,
+          paddingRight: config.space.S100,
         },
       },
     },
@@ -200,6 +200,20 @@ export const BubbleRightArrow = style({
 
 globalStyle(`[data-selected="true"] .${BubbleContent}`, {
   filter: 'brightness(1.5)',
+});
+
+// On phones a long-press should only open the message menu — never start a text
+// selection. Force selection/callout off on the whole bubble subtree (the
+// rendered message HTML would otherwise re-enable it). Desktop keeps text
+// selectable for copy.
+globalStyle(`.${BubbleContent}, .${BubbleContent} *`, {
+  '@media': {
+    [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
+      WebkitUserSelect: 'none',
+      userSelect: 'none',
+      WebkitTouchCallout: 'none',
+    },
+  },
 });
 
 export const Username = style({

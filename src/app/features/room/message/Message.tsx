@@ -79,6 +79,7 @@ import { getMatrixToRoomEvent } from '../../../plugins/matrix-to';
 import { getViaServers } from '../../../plugins/via-servers';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { useLongPress } from '../../../hooks/useLongPress';
+import { SwipeToReply } from './SwipeToReply';
 import { useRoomPinnedEvents } from '../../../hooks/useRoomPinnedEvents';
 import { MemberPowerTag, StateEvent } from '../../../../types/matrix/room';
 import { PowerIcon } from '../../../components/power';
@@ -1078,6 +1079,19 @@ export const Message = as<'div', MessageProps>(
       setMenuAnchor({ x, y, width: 0, height: 0 });
     });
 
+    // Swipe-left-to-reply reuses the same reply path as double-click.
+    const triggerReply = useCallback(() => {
+      if (edit) return;
+      const evtId = mEvent.getId();
+      if (!evtId) return;
+      const fakeTarget = {
+        getAttribute: (name: string) => (name === 'data-event-id' ? evtId : null),
+      };
+      onReplyClick({
+        currentTarget: fakeTarget,
+      } as unknown as React.MouseEvent<HTMLButtonElement>);
+    }, [edit, mEvent, onReplyClick]);
+
     const handleBubbleDoubleClick: MouseEventHandler<HTMLDivElement> = useCallback(
       (evt) => {
         if (edit) return;
@@ -1387,35 +1401,37 @@ export const Message = as<'div', MessageProps>(
           </CompactLayout>
         )}
         {messageLayout === MessageLayout.Bubble && (
-          <BubbleLayout
-            before={isOwn ? undefined : avatarJSX}
-            hideBubble={isMediaBubble}
-            header={
-              headerJSX ? (
-                <Box
-                  as="span"
-                  alignItems="Center"
-                  gap="200"
-                  style={{
-                    backgroundColor: 'rgba(0,0,0,0.25)',
-                    borderRadius: '999px',
-                    padding: '1px 6px',
-                    display: 'inline-flex',
-                  }}
-                >
-                  {headerJSX}
-                </Box>
-              ) : undefined
-            }
-            onContextMenu={handleContextMenu}
-            onDoubleClick={handleBubbleDoubleClick}
-            isOwn={isOwn}
-            data-event-id={mEvent.getId()}
-            data-selected={!!menuAnchor || !!emojiBoardAnchor ? 'true' : undefined}
-            {...longPress}
-          >
-            {msgContentJSX}
-          </BubbleLayout>
+          <SwipeToReply onReply={triggerReply}>
+            <BubbleLayout
+              before={isOwn ? undefined : avatarJSX}
+              hideBubble={isMediaBubble}
+              header={
+                headerJSX ? (
+                  <Box
+                    as="span"
+                    alignItems="Center"
+                    gap="200"
+                    style={{
+                      backgroundColor: 'rgba(0,0,0,0.25)',
+                      borderRadius: '999px',
+                      padding: '1px 6px',
+                      display: 'inline-flex',
+                    }}
+                  >
+                    {headerJSX}
+                  </Box>
+                ) : undefined
+              }
+              onContextMenu={handleContextMenu}
+              onDoubleClick={handleBubbleDoubleClick}
+              isOwn={isOwn}
+              data-event-id={mEvent.getId()}
+              data-selected={!!menuAnchor || !!emojiBoardAnchor ? 'true' : undefined}
+              {...longPress}
+            >
+              {msgContentJSX}
+            </BubbleLayout>
+          </SwipeToReply>
         )}
         {messageLayout !== MessageLayout.Compact && messageLayout !== MessageLayout.Bubble && (
           <ModernLayout before={avatarJSX} onContextMenu={handleContextMenu} {...longPress}>

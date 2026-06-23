@@ -56,7 +56,10 @@ export const PageNavHeader = recipe({
 export type PageNavHeaderVariants = RecipeVariants<typeof PageNavHeader>;
 
 export const PageNavContent = style({
-  minHeight: '100%',
+  // 1px taller than the viewport so the list is always marginally scrollable —
+  // this gives the native iOS rubber-band bounce even when items don't fill the
+  // screen, without a visible scroll.
+  minHeight: 'calc(100% + 1px)',
   padding: config.space.S200,
   paddingRight: 0,
   paddingBottom: config.space.S700,
@@ -113,7 +116,6 @@ export const PageHeroSection = style([
     margin: 'auto',
   },
 ]);
-
 
 export const PageContentCenter = style([
   DefaultReset,
