@@ -1,5 +1,5 @@
 import React, { ReactNode, useEffect } from 'react';
-import { configClass, varsClass } from 'folds';
+import { color, configClass, varsClass } from 'folds';
 import { useSetAtom } from 'jotai';
 import {
   DarkTheme,
@@ -13,6 +13,19 @@ import { useSetting } from '../state/hooks/settings';
 import { settingsAtom } from '../state/settings';
 import { themeGroupAtom } from '../state/room/roomStyles';
 
+// `color.Background.Container` is a folds CSS variable like "var(--xxxx)". To
+// get the actual color of the active theme we resolve that variable against the
+// themed <body> and push it into <meta name="theme-color"> so the mobile
+// browser/OS chrome (iOS status bar, Android address bar) matches the app
+// instead of flashing white.
+const themeColorVarName = color.Background.Container.replace(/^var\(/, '').replace(/\)$/, '').trim();
+const syncThemeColorMeta = () => {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  const value = getComputedStyle(document.body).getPropertyValue(themeColorVarName).trim();
+  if (value) meta.setAttribute('content', value);
+};
+
 export function UnAuthRouteThemeManager() {
   const systemThemeKind = useSystemThemeKind();
 
@@ -25,6 +38,7 @@ export function UnAuthRouteThemeManager() {
     if (systemThemeKind === ThemeKind.Light) {
       document.body.classList.add(...LightTheme.classNames);
     }
+    syncThemeColorMeta();
   }, [systemThemeKind]);
 
   return null;
@@ -46,6 +60,7 @@ export function AuthRouteThemeManager({ children }: { children: ReactNode }) {
     } else {
       document.body.style.filter = '';
     }
+    syncThemeColorMeta();
   }, [activeTheme, monochromeMode]);
 
   // Keep the chat-style default group in sync with the active theme group, so

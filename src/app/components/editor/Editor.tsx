@@ -170,6 +170,16 @@ export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
                   onKeyDown={handleKeydown}
                   onKeyUp={onKeyUp}
                   onPaste={onPaste}
+                  // Best-effort iOS keyboard hints. Safari still draws the
+                  // accessory bar over contentEditable, but these keep the
+                  // keyboard sensible (sentence case, send key). Spread+cast
+                  // because slate's Editable prop types omit these DOM attrs,
+                  // though it forwards them to the contentEditable node.
+                  {...({
+                    enterKeyHint: 'send',
+                    autoCapitalize: 'sentences',
+                    autoCorrect: 'on',
+                  } as Record<string, string>)}
                 />
               </Scroll>
             )}

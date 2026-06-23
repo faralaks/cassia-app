@@ -673,6 +673,9 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             borderRadius: 0,
             boxShadow: 'none',
             borderTop: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
+            // Extend the input bar into the iOS home-indicator / gesture area so
+            // the text row sits above it instead of under it.
+            paddingBottom: 'env(safe-area-inset-bottom)',
           }}
           onKeyDown={handleKeyDown}
           onKeyUp={handleKeyUp}
@@ -684,7 +687,23 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             ) : undefined
           }
           top={
-            replyDraft && (
+            <>
+              <AnimatePresence initial={false}>
+                {toolbar && (
+                  <motion.div
+                    key="editor-toolbar"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.15, ease: 'easeOut' }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <Toolbar />
+                    <Line variant="SurfaceVariant" size="300" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {replyDraft && (
               <div>
                 <Box
                   alignItems="Center"
@@ -720,7 +739,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                   </Box>
                 </Box>
               </div>
-            )
+              )}
+            </>
           }
           before={
             recording ? (
@@ -848,23 +868,6 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
               )}
               </>
             )
-          }
-          bottom={
-            <AnimatePresence initial={false}>
-              {toolbar && (
-                <motion.div
-                  key="editor-toolbar"
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: reduceMotion ? 0 : 0.15, ease: 'easeOut' }}
-                  style={{ overflow: 'hidden' }}
-                >
-                <Line variant="SurfaceVariant" size="300" />
-                <Toolbar />
-                </motion.div>
-              )}
-            </AnimatePresence>
           }
         />
       </div>

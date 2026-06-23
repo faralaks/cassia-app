@@ -17,8 +17,12 @@ import App from './app/pages/App';
 import './app/i18n';
 import { pushSessionToSW } from './sw-session';
 import { getFallbackSession } from './app/state/sessions';
+import { setupViewportHeight } from './app/utils/viewportHeight';
 
 document.body.classList.add(configClass, varsClass);
+
+// Track the visible viewport height (keeps the composer above the iOS keyboard).
+setupViewportHeight();
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {

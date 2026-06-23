@@ -1,5 +1,6 @@
 import { globalStyle, style } from '@vanilla-extract/css';
 import { DefaultReset, color, toRem } from 'folds';
+import { MOBILE_BREAKPOINT } from '../../../hooks/useScreenSize';
 
 export const VoiceContainer = style([
   DefaultReset,
@@ -7,6 +8,17 @@ export const VoiceContainer = style([
     width: '100%',
     maxWidth: '100%',
     cursor: 'pointer',
+
+    '@media': {
+      // Voice messages are oversized on phones — scale the whole player down
+      // ~30% proportionally (keeps the px-based waveform math intact), anchored
+      // to the start edge, and reclaim the freed layout width.
+      [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
+        transform: 'scale(0.7)',
+        transformOrigin: 'left center',
+        marginRight: '-30%',
+      },
+    },
   },
 ]);
 

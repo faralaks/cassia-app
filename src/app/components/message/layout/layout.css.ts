@@ -1,6 +1,7 @@
 import { createVar, globalStyle, keyframes, style, styleVariants } from '@vanilla-extract/css';
 import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
 import { DefaultReset, color, config, toRem } from 'folds';
+import { MOBILE_BREAKPOINT } from '../../../hooks/useScreenSize';
 
 export const StickySection = style({
   position: 'sticky',
@@ -138,6 +139,15 @@ export const BubbleContent = style({
   color: `var(--bubble-incoming-text, #ffffff)`,
   borderRadius: `var(--bubble-radius, ${config.radii.R500})`,
   position: 'relative',
+
+  '@media': {
+    // On phones cap the bubble at 75% of the row so it never spans the screen,
+    // and shrink the message text a touch so long messages fit comfortably.
+    [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
+      maxWidth: '75vw',
+      fontSize: toRem(14),
+    },
+  },
 });
 
 export const BubbleContentArrowLeft = style({
