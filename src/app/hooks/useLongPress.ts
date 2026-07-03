@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import { hapticTap } from '../utils/haptics';
 
 const LONG_PRESS_MS = 450;
 const MOVE_TOLERANCE = 10; // px of finger movement that cancels the press
@@ -38,6 +39,7 @@ export const useLongPress = (onLongPress: (x: number, y: number) => void): LongP
       clear();
       timer.current = window.setTimeout(() => {
         timer.current = undefined;
+        hapticTap();
         onLongPress(start.current?.x ?? t.clientX, start.current?.y ?? t.clientY);
       }, LONG_PRESS_MS);
     },

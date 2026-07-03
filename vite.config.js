@@ -108,8 +108,15 @@ export default defineConfig({
       strategies: 'injectManifest',
       injectRegister: false,
       manifest: false,
+      // Precache the app shell (bundle, styles, fonts, wasm) so an installed
+      // PWA launches instantly and opens offline. Runtime-fetched files
+      // (config.json, backgrounds, element-call, pdf worker) stay
+      // network-served — the SW media handler and browser cache cover those.
       injectManifest: {
-        injectionPoint: undefined,
+        globPatterns: ['**/*.{js,css,html,woff2,wasm}'],
+        globIgnores: ['public/**', 'pdf.worker.min.js'],
+        // The matrix crypto wasm and main chunk exceed workbox's 2MB default.
+        maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
       },
       devOptions: {
         enabled: true,

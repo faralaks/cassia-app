@@ -57,9 +57,11 @@ function FaviconUpdater() {
   useEffect(() => {
     let notification = false;
     let highlight = false;
+    let total = 0;
     roomToUnread.forEach((unread) => {
       if (unread.total > 0) {
         notification = true;
+        total += unread.total;
       }
       if (unread.highlight > 0) {
         highlight = true;
@@ -71,6 +73,12 @@ function FaviconUpdater() {
     } else {
       setFavicon(LogoSVG);
     }
+
+    // Mirror the unread count onto the installed-app icon (Badging API —
+    // iOS 16.4+ home-screen web apps, desktop PWAs). On iOS the badge only
+    // renders once notification permission is granted; the call itself is
+    // always safe.
+    navigator.setAppBadge?.(total).catch(() => undefined);
   }, [roomToUnread]);
 
   return null;

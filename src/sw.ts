@@ -1,7 +1,34 @@
 /// <reference lib="WebWorker" />
+import {
+  cleanupOutdatedCaches,
+  createHandlerBoundToURL,
+  precacheAndRoute,
+} from 'workbox-precaching';
+import { NavigationRoute, registerRoute } from 'workbox-routing';
 
 export type {};
-declare const self: ServiceWorkerGlobalScope;
+declare const self: ServiceWorkerGlobalScope & {
+  __WB_MANIFEST: Parameters<typeof precacheAndRoute>[0];
+};
+
+/**
+ * App-shell precache: vite-plugin-pwa injects the built asset list into
+ * __WB_MANIFEST (see injectManifest in vite.config.js) so an installed PWA
+ * launches instantly and works offline. SPA navigations are served the cached
+ * index.html. In dev the manifest is empty — everything falls through to the
+ * network and only the media handler below is active.
+ */
+const precacheEntries = self.__WB_MANIFEST || [];
+precacheAndRoute(precacheEntries);
+cleanupOutdatedCaches();
+if (precacheEntries.length > 0) {
+  registerRoute(
+    new NavigationRoute(createHandlerBoundToURL('index.html'), {
+      // Real files that must never be answered with the SPA shell.
+      denylist: [/\/public\//, /\/config\.json$/, /\/manifest\.json$/, /\/pdf\.worker\.min\.js$/],
+    })
+  );
+}
 
 type SessionInfo = {
   accessToken: string;

@@ -975,6 +975,27 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     return () => scrollEl.removeEventListener('wheel', onWheel);
   }, []);
 
+  // Native chat behavior: dragging the timeline dismisses the keyboard. Blur
+  // whatever editable is focused (the composer) when a touch-scroll starts
+  // outside of it — touchmove only fires on touch devices, so desktop is
+  // untouched.
+  useEffect(() => {
+    const scrollEl = scrollRef.current;
+    if (!scrollEl) return undefined;
+    const onTouchMove = () => {
+      const active = document.activeElement;
+      if (!active || scrollEl.contains(active)) return;
+      if (
+        active instanceof HTMLElement &&
+        (active.isContentEditable || active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')
+      ) {
+        active.blur();
+      }
+    };
+    scrollEl.addEventListener('touchmove', onTouchMove, { passive: true });
+    return () => scrollEl.removeEventListener('touchmove', onTouchMove);
+  }, []);
+
   // Scroll to bottom on initial timeline load
   useLayoutEffect(() => {
     const scrollEl = scrollRef.current;

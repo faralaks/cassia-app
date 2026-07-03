@@ -1,7 +1,15 @@
-import React, { ReactNode } from 'react';
-import { motion, useReducedMotion, useMotionValue, useTransform, type PanInfo } from 'motion/react';
+import React, { ReactNode, useRef } from 'react';
+import {
+  motion,
+  useReducedMotion,
+  useMotionValue,
+  useMotionValueEvent,
+  useTransform,
+  type PanInfo,
+} from 'motion/react';
 import { Icon, Icons } from 'folds';
 import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
+import { hapticTap } from '../../../utils/haptics';
 
 // Drag distance (leftward) past which the swipe triggers a reply.
 const REPLY_THRESHOLD = 64;
@@ -21,6 +29,18 @@ export function SwipeToReply({ onReply, children }: SwipeToReplyProps) {
   // Reply icon fades/scales in as the row is dragged left toward the threshold.
   const iconOpacity = useTransform(x, [-REPLY_THRESHOLD, -REPLY_THRESHOLD / 3, 0], [1, 0.4, 0]);
   const iconScale = useTransform(x, [-REPLY_THRESHOLD, 0], [1, 0.6]);
+
+  // Haptic tick the moment the drag arms the reply (and again if it re-arms),
+  // so the finger learns the threshold without watching the icon.
+  const armed = useRef(false);
+  useMotionValueEvent(x, 'change', (latest) => {
+    if (latest <= -REPLY_THRESHOLD && !armed.current) {
+      armed.current = true;
+      hapticTap();
+    } else if (latest > -REPLY_THRESHOLD) {
+      armed.current = false;
+    }
+  });
 
   if (screenSize !== ScreenSize.Mobile) {
     return children;
