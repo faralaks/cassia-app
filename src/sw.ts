@@ -136,6 +136,13 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
     setSession(client.id, accessToken, baseUrl);
     cleanupDeadClients();
   }
+
+  // Page-driven update activation (see index.tsx): lets a freshly loaded page
+  // promote a waiting update immediately instead of waiting for all windows
+  // to close.
+  if (type === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
 
 const MEDIA_PATHS = ['/_matrix/client/v1/media/download', '/_matrix/client/v1/media/thumbnail'];

@@ -113,6 +113,7 @@ import { CommandAutocomplete } from './CommandAutocomplete';
 import { Command, SHRUG, TABLEFLIP, UNFLIP, useCommands } from '../../hooks/useCommands';
 import { mobileOrTablet } from '../../utils/user-agent';
 import { useElementSizeObserver } from '../../hooks/useElementSizeObserver';
+import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 import { ReplyLayout, ThreadIndicator } from '../../components/message';
 import { roomToParentsAtom } from '../../state/room/roomToParents';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
@@ -143,6 +144,14 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     const mx = useMatrixClient();
     const useAuthentication = useMediaAuthentication();
     const reduceMotion = useReducedMotion();
+    const screenSize = useScreenSizeContext();
+    const mobile = screenSize === ScreenSize.Mobile;
+    // Telegram-style mobile composer: circled outline icon buttons flanking
+    // the rounded text pill (see the Editor `pill` prop). Desktop keeps the
+    // compact square buttons.
+    const composerBtnProps = mobile
+      ? ({ size: '400', radii: 'Pill', outlined: true } as const)
+      : ({ size: '300', radii: '300' } as const);
     const [emojiOpen, setEmojiOpen] = useState(false);
     const [emojiMounted, setEmojiMounted] = useState(false);
     const [emojiTab, setEmojiTab] = useAtom(emojiBoardTabAtom);
@@ -678,6 +687,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           editableName="RoomInput"
           editor={editor}
           placeholder="Send a message..."
+          pill={mobile}
           style={{
             backgroundColor: color.Background.Container,
             borderRadius: 0,
@@ -687,6 +697,9 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             // the text row sits above it instead of under it. Collapses to zero
             // while the keyboard is open (see --bottom-bar-inset in index.css).
             paddingBottom: 'var(--bottom-bar-inset, 0px)',
+            // Breathing room so the circled buttons aren't glued to the screen
+            // edges (Telegram-style bar).
+            ...(mobile ? { paddingLeft: config.space.S200, paddingRight: config.space.S200 } : {}),
           }}
           onKeyDown={handleKeyDown}
           onKeyUp={handleKeyUp}
@@ -759,8 +772,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 onClick={voice.cancel}
                 variant="SurfaceVariant"
                 fill="None"
-                size="300"
-                radii="300"
+                {...composerBtnProps}
                 aria-label="Delete recording"
               >
                 <Icon src={Icons.Delete} />
@@ -770,8 +782,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 onClick={() => pickFile('*')}
                 variant="SurfaceVariant"
                 fill="None"
-                size="300"
-                radii="300"
+                {...composerBtnProps}
               >
                 <Icon src={Icons.PlusCircle} />
               </IconButton>
@@ -783,8 +794,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 onClick={sendVoice}
                 variant="SurfaceVariant"
                 fill="None"
-                size="300"
-                radii="300"
+                {...composerBtnProps}
                 aria-label="Send voice message"
               >
                 <Icon src={Icons.Send} />
@@ -794,8 +804,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 <IconButton
                   variant="SurfaceVariant"
                   fill="None"
-                  size="300"
-                  radii="300"
+                  {...composerBtnProps}
                   onClick={() => setToolbar(!toolbar)}
                 >
                   <Icon src={toolbar ? Icons.AlphabetUnderline : Icons.Alphabet} />
@@ -849,8 +858,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                     }}
                     variant="SurfaceVariant"
                     fill="None"
-                    size="300"
-                    radii="300"
+                    {...composerBtnProps}
                   >
                     <Icon src={Icons.Smile} filled={emojiOpen} />
                   </IconButton>
@@ -860,8 +868,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                     onClick={() => voice.start()}
                     variant="SurfaceVariant"
                     fill="None"
-                    size="300"
-                    radii="300"
+                    {...composerBtnProps}
                     aria-label="Record voice message"
                   >
                     <Icon src={Icons.Mic} />
@@ -871,8 +878,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                     onClick={submit}
                     variant="SurfaceVariant"
                     fill="None"
-                    size="300"
-                    radii="300"
+                    {...composerBtnProps}
                   >
                     <Icon src={Icons.Send} />
                   </IconButton>

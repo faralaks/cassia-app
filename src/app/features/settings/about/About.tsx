@@ -10,6 +10,25 @@ import { clearCacheAndReload } from '../../../../client/initMatrix';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { APP_VERSION, REPO_URL } from '../../../cons';
 
+// Force-fetch the latest app version: drop the service worker and its
+// precache (NOT account data / settings — IndexedDB and localStorage stay),
+// then reload from the network. For when a long-lived session is stuck on an
+// old build.
+const updateAndReload = async () => {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((reg) => reg.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    }
+  } finally {
+    window.location.reload();
+  }
+};
+
 type AboutProps = {
   requestClose: () => void;
 };
@@ -96,6 +115,22 @@ export function About({ requestClose }: AboutProps) {
                   direction="Column"
                   gap="400"
                 >
+                  <SettingTile
+                    title="Update & Reload"
+                    description={`Fetch the latest app version and reload (current: ${APP_VERSION}). Your sign-in and settings are kept.`}
+                    after={
+                      <Button
+                        onClick={updateAndReload}
+                        variant="Secondary"
+                        fill="Soft"
+                        size="300"
+                        radii="300"
+                        outlined
+                      >
+                        <Text size="B300">Update</Text>
+                      </Button>
+                    }
+                  />
                   <SettingTile
                     title="Clear Cache & Reload"
                     description="Clear all your locally stored data and reload from server."

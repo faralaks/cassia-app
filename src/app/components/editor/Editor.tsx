@@ -58,7 +58,11 @@ const withCustomNormalize = (editor: Editor): Editor => {
   editor.normalizeNode = (entry) => {
     const [node, path] = entry;
 
-    if (Element.isElement(node) && node.type === BlockType.Link && Editor.string(editor, path) === '') {
+    if (
+      Element.isElement(node) &&
+      node.type === BlockType.Link &&
+      Editor.string(editor, path) === ''
+    ) {
       Transforms.unwrapNodes(editor, { at: path });
       return;
     }
@@ -88,6 +92,8 @@ type CustomEditorProps = {
   editor: Editor;
   placeholder?: string;
   style?: React.CSSProperties;
+  // Telegram-style mobile composer: rounded pill text area, larger font.
+  pill?: boolean;
   onKeyDown?: KeyboardEventHandler;
   onKeyUp?: KeyboardEventHandler;
   onChange?: EditorChangeHandler;
@@ -106,6 +112,7 @@ export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
       editor,
       placeholder,
       style,
+      pill,
       onKeyDown,
       onKeyUp,
       onChange,
@@ -133,12 +140,20 @@ export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
       ({ attributes, children }: RenderPlaceholderProps) => (
         <span {...attributes} className={css.EditorPlaceholderContainer}>
           {/* Inner component to style the actual text position and appearance */}
-          <Text as="span" className={css.EditorPlaceholderTextVisual} truncate>
+          <Text
+            as="span"
+            className={
+              pill
+                ? `${css.EditorPlaceholderTextVisual} ${css.EditorPlaceholderTextPill}`
+                : css.EditorPlaceholderTextVisual
+            }
+            truncate
+          >
             {children}
           </Text>
         </span>
       ),
-      []
+      [pill]
     );
 
     return (
@@ -153,7 +168,11 @@ export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
             )}
             {replaceTextarea ?? (
               <Scroll
-                className={css.EditorTextareaScroll}
+                className={
+                  pill
+                    ? `${css.EditorTextareaScroll} ${css.EditorTextareaScrollPill}`
+                    : css.EditorTextareaScroll
+                }
                 variant="SurfaceVariant"
                 style={{ maxHeight }}
                 size="300"
@@ -162,7 +181,9 @@ export const CustomEditor = forwardRef<HTMLDivElement, CustomEditorProps>(
               >
                 <Editable
                   data-editable-name={editableName}
-                  className={css.EditorTextarea}
+                  className={
+                    pill ? `${css.EditorTextarea} ${css.EditorTextareaPill}` : css.EditorTextarea
+                  }
                   placeholder={placeholder}
                   renderPlaceholder={renderPlaceholder}
                   renderElement={renderElement}

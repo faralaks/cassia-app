@@ -11,6 +11,7 @@ import {
   MenuItem,
   PopOut,
   RectCords,
+  Spinner,
   Text,
   config,
   toRem,
@@ -19,7 +20,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useAtom, useAtomValue } from 'jotai';
 import FocusTrap from 'focus-trap-react';
-import { RoomEvent, Room } from 'matrix-js-sdk';
+import { ClientEvent, RoomEvent, Room } from 'matrix-js-sdk';
 import { factoryRoomIdByActivity, factoryRoomIdByAtoZ } from '../../../utils/sort';
 import {
   NavButton,
@@ -339,22 +340,32 @@ export function Home() {
     [mx, inviteRooms]
   );
   const roomInvites = useMemo(
-    () =>
-      inviteRooms.filter(
-        (room) => !isDirectInvite(room, mx.getSafeUserId()) && !isSpace(room)
-      ),
+    () => inviteRooms.filter((room) => !isDirectInvite(room, mx.getSafeUserId()) && !isSpace(room)),
     [mx, inviteRooms]
   );
 
-  const noRoomToDisplay =
-    rooms.length === 0 && directs.length === 0 && inviteRooms.length === 0;
+  const noRoomToDisplay = rooms.length === 0 && directs.length === 0 && inviteRooms.length === 0;
+  // Don't flash the "No Rooms" empty state during startup — the room list is
+  // briefly empty until the client hydrates/syncs. Show a quiet spinner until
+  // the initial sync has completed at least once.
+  const [initialSynced, setInitialSynced] = useState(() => mx.isInitialSyncComplete());
+  useEffect(() => {
+    if (initialSynced) return undefined;
+    const onSync = () => setInitialSynced(mx.isInitialSyncComplete());
+    mx.on(ClientEvent.Sync, onSync);
+    return () => {
+      mx.removeListener(ClientEvent.Sync, onSync);
+    };
+  }, [mx, initialSynced]);
   const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
 
   const [activityTick, setActivityTick] = useState(0);
   useEffect(() => {
     const handle = () => setActivityTick((t) => t + 1);
     mx.on(RoomEvent.Timeline, handle);
-    return () => { mx.off(RoomEvent.Timeline, handle); };
+    return () => {
+      mx.off(RoomEvent.Timeline, handle);
+    };
   }, [mx]);
 
   const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
@@ -382,9 +393,13 @@ export function Home() {
   return (
     <PageNav>
       <HomeHeader />
-      {noRoomToDisplay ? (
-        <HomeEmpty />
-      ) : (
+      {noRoomToDisplay && !initialSynced ? (
+        <Box grow="Yes" alignItems="Center" justifyContent="Center">
+          <Spinner size="600" variant="Secondary" fill="Soft" />
+        </Box>
+      ) : null}
+      {noRoomToDisplay && initialSynced ? <HomeEmpty /> : null}
+      {!noRoomToDisplay && (
         <PageNavContent scrollRef={scrollRef}>
           <Box direction="Column" gap="300">
             {(sortedDirects.length > 0 || directInvites.length > 0) && (
