@@ -17,10 +17,13 @@
  */
 let installed = false;
 
-// TEMPORARY diagnostic (remove after the iOS 26 bottom-band issue is nailed):
-// tiny overlay with the real viewport numbers so device screenshots tell us
-// exactly where the layout viewport ends vs. the physical screen.
-const VIEWPORT_DEBUG = true;
+// Diagnostic overlay with the real viewport numbers, so device screenshots
+// show exactly where the layout viewport ends vs. the physical screen. Used
+// to pin down the iOS 26.1 letterbox regression (WebKit #301994, fixed in
+// iOS 26.2). Off by default; enable from a remote inspector console with
+//   localStorage.setItem('cassia_viewport_debug', '1')
+const VIEWPORT_DEBUG =
+  typeof localStorage !== 'undefined' && localStorage.getItem('cassia_viewport_debug') === '1';
 let debugEl: HTMLElement | null = null;
 
 const renderViewportDebug = () => {
