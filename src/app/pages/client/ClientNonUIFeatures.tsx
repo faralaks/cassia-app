@@ -26,6 +26,8 @@ import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { useSelectedRoom } from '../../hooks/router/useSelectedRoom';
 import { useInboxNotificationsSelected } from '../../hooks/router/useInbox';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
+import { themeGroupAtom } from '../../state/room/roomStyles';
+import { getDefaultStyle } from '../../utils/chatStyle';
 
 function SystemEmojiFeature() {
   const [twitterEmoji] = useSetting(settingsAtom, 'twitterEmoji');
@@ -47,6 +49,28 @@ function PageZoomFeature() {
   } else {
     document.documentElement.style.setProperty('font-size', `calc(1em * ${pageZoom / 100})`);
   }
+
+  return null;
+}
+
+// Keep decoded background images referenced so the browser holds them in its
+// memory cache — otherwise opening a room waits ~a second while the default
+// chat wallpaper is fetched/decoded before first paint.
+const warmedBackgrounds = new Map<string, HTMLImageElement>();
+
+function ChatBackgroundPreloader() {
+  const themeGroup = useAtomValue(themeGroupAtom);
+
+  useEffect(() => {
+    const { bgImage, bgPlain } = getDefaultStyle(themeGroup);
+    if (!bgImage || bgPlain || warmedBackgrounds.has(bgImage)) return;
+    const img = new Image();
+    img.src = bgImage;
+    // decode() pre-rasterizes off the critical path; ignore failures — this
+    // is purely a warm-up, RoomView loads the image itself either way.
+    img.decode?.().catch(() => undefined);
+    warmedBackgrounds.set(bgImage, img);
+  }, [themeGroup]);
 
   return null;
 }
@@ -270,6 +294,7 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
     <>
       <SystemEmojiFeature />
       <PageZoomFeature />
+      <ChatBackgroundPreloader />
       <FaviconUpdater />
       <InviteNotifications />
       <MessageNotifications />
