@@ -96,10 +96,11 @@ body {
   font-variant-ligatures: no-contextual;
 }
 /*
- * #root height tracks --app-height (set from visualViewport.height by the
- * handler) so when the iOS keyboard opens the app column shrinks — the content
- * area gives up space and the composer rides up. The page itself stays fixed;
- * it never scrolls. Falls back to the dynamic viewport when unavailable.
+ * #root height tracks --app-height (set by setupViewportHeight): the full
+ * layout viewport normally, the keyboard-clipped visual viewport while the
+ * iOS keyboard is open — the content area gives up space and the composer
+ * rides up. The page itself stays fixed; it never scrolls. Falls back to the
+ * dynamic viewport when unavailable.
  */
 #root {
   width: 100%;

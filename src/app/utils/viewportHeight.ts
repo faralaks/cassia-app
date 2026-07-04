@@ -45,14 +45,25 @@ export function setupViewportHeight(): void {
   const vv = window.visualViewport;
 
   const apply = () => {
-    const height = vv?.height ?? window.innerHeight;
-    root.style.setProperty('--app-height', `${Math.round(height)}px`);
-    // Flag keyboard-open state on <html> so CSS can collapse bottom
-    // safe-area paddings (composer, bottom nav) — the keyboard covers the
-    // home-indicator area, so keeping the inset would leave a dead band
-    // above the keyboard. 150px threshold: keyboards are ~300px, while
-    // other visual-viewport occlusions (find bar etc.) are far smaller.
-    root.toggleAttribute('data-keyboard', window.innerHeight - height > 150);
+    // Height of the app column, measured from the top of the (pinned) page:
+    // offsetTop + height = where the visible area ends. In iOS 26 standalone
+    // (viewport-fit=cover) visualViewport excludes the safe-area bands, so
+    // raw vv.height is up to ~90pt short of the screen — using it directly
+    // left an empty strip under the bottom nav / composer.
+    const layoutHeight = root.clientHeight;
+    const visualBottom = vv ? Math.round(vv.offsetTop + vv.height) : window.innerHeight;
+    // Keyboard heuristic: only the keyboard occludes hundreds of px; safe
+    // areas and minor UI are well under 150. Compare against the *layout*
+    // viewport — window.innerHeight tracks the visual viewport on iOS and
+    // shrinks together with it, so it can't be the baseline.
+    const keyboard = layoutHeight - visualBottom > 150;
+    // Full layout height (screen incl. safe areas — bars pad themselves via
+    // --bottom-bar-inset) normally; the keyboard-clipped height while typing
+    // so the composer rides up and sits right on the keyboard.
+    root.style.setProperty('--app-height', `${keyboard ? visualBottom : layoutHeight}px`);
+    // Collapses the bottom safe-area paddings (composer, bottom nav) while
+    // the keyboard covers the home-indicator area — see index.css.
+    root.toggleAttribute('data-keyboard', keyboard);
     // Undo any auto-scroll iOS applied to push content behind the keyboard.
     if (window.scrollY !== 0) window.scrollTo(0, 0);
   };

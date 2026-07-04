@@ -10,8 +10,8 @@ const DISMISS_VELOCITY = 500;
  * Bottom-anchored counterpart to folds' OverlayCenter, for mobile sheet
  * presentation: place inside an <Overlay> and put a BottomSheet in it.
  *
- * Sized with --app-height (the visual viewport, kept by setupViewportHeight)
- * instead of the layout viewport, so when the iOS keyboard opens the sheet
+ * Sized with --app-height (kept by setupViewportHeight: full screen normally,
+ * keyboard-clipped while typing), so when the iOS keyboard opens the sheet
  * rides up above it like a native sheet instead of being covered.
  */
 export function OverlayBottom({ children }: { children: ReactNode }) {
