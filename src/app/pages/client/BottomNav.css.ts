@@ -9,12 +9,12 @@ export const BottomNav = style([
     display: 'flex',
     alignItems: 'stretch',
     justifyContent: 'space-around',
-    // 48px bar (border-box: padding included). The bottom inset must stay
-    // small — icon + label need ~42px, so a large safe-area padding squeezes
-    // the content area and overflows the icons up across the top border.
-    // ~6px keeps the content low, riding just above the home indicator.
-    height: toRem(48),
-    paddingBottom: 'max(var(--bottom-bar-inset, 0px), 2px)',
+    // 48px of content + the bottom inset OUTSIDE it (border-box would other-
+    // wise squeeze the ~42px icon+label under 48px and overflow it across the
+    // top border). Total ~64px on phones — Telegram's floating tab pill tops
+    // out even higher (~78pt above the screen bottom).
+    height: `calc(${toRem(48)} + var(--bottom-bar-inset, 0px))`,
+    paddingBottom: 'var(--bottom-bar-inset, 0px)',
     backgroundColor: color.Background.Container,
     borderTop: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
     color: color.Background.OnContainer,

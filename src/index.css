@@ -124,15 +124,22 @@ body {
 
 /*
  * Bottom inset for bars sitting on the screen's bottom edge (composer, bottom
- * nav). Deliberately a small fraction of the raw safe-area inset —
- * Telegram-tight, the content rides just above the home indicator (which iOS
- * draws over the app anyway) — and zero while the iOS keyboard is open
- * (data-keyboard, set by setupViewportHeight): the keyboard covers the
- * home-indicator area, so any remaining inset would show as an empty strip
- * above the keyboard.
+ * nav). A fixed value on touch phones: env(safe-area-inset-bottom) reads 0
+ * without viewport-fit=cover, and viewport-fit=cover must NOT be used — it
+ * triggers the iOS 26.x web-app letterbox bug. 16px is calibrated against
+ * Telegram iOS: their composer text ends ~32-40pt above the screen bottom;
+ * ours lands ~37px with the editor's internal padding on top of this inset.
+ * Zero while the keyboard is open (data-keyboard, set by setupViewportHeight):
+ * the keyboard covers the home-indicator area, so any remaining inset would
+ * show as an empty strip above the keyboard.
  */
 :root {
-  --bottom-bar-inset: calc(env(safe-area-inset-bottom) / 12);
+  --bottom-bar-inset: 0px;
+}
+@media (pointer: coarse) and (max-width: 750px) {
+  :root {
+    --bottom-bar-inset: 16px;
+  }
 }
 html[data-keyboard] {
   --bottom-bar-inset: 0px;
