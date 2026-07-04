@@ -3,12 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <!-- viewport-fit=cover lets the app draw under the iOS status bar / Dynamic
-      Island so the strip can be theme-colored (see #root safe-area padding). -->
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
-    />
+    <!-- No viewport-fit=cover: on iOS 26.x (measured on 26.5.1) it triggers the
+      web-app letterbox bug — the view is sized minus the status bar but
+      anchored at the screen top, leaving a dead ~62pt band at the bottom.
+      Without it the view sits below the status bar and reaches the true
+      screen bottom; the status-bar strip is colored via the theme-color meta
+      (synced to the active theme by ThemeManager). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
     <title>Cassia</title>
     <meta name="name" content="Cassia" />
     <meta name="author" content="faralaks" />
