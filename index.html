@@ -33,7 +33,14 @@
     <meta name="application-name" content="Cassia" />
     <meta name="apple-mobile-web-app-title" content="Cassia" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- "default", not "black-translucent": on iOS 26.x (incl. 26.5) translucent
+      web apps get a letterboxed viewport — sized minus the status bar but
+      anchored at the screen top, leaving a dead ~62pt band at the bottom
+      (WebKit #301994 class of bugs). With "default" the same view sits below
+      the status bar and reaches the true screen bottom; iOS paints the bar
+      area from the theme-color meta, which ThemeManager keeps in sync with
+      the active theme. Baked at add-to-home-screen time — reinstall to apply. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
     <link
       rel="apple-touch-icon"
