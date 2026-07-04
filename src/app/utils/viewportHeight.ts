@@ -17,6 +17,44 @@
  */
 let installed = false;
 
+// TEMPORARY diagnostic (remove after the iOS 26 bottom-band issue is nailed):
+// tiny overlay with the real viewport numbers so device screenshots tell us
+// exactly where the layout viewport ends vs. the physical screen.
+const VIEWPORT_DEBUG = true;
+let debugEl: HTMLElement | null = null;
+
+const renderViewportDebug = () => {
+  if (!VIEWPORT_DEBUG) return;
+  if (!debugEl) {
+    debugEl = document.createElement('div');
+    debugEl.style.cssText =
+      'position:fixed;left:8px;bottom:120px;z-index:99999;pointer-events:none;' +
+      'font:10px/1.5 monospace;color:#0f0;background:rgba(0,0,0,0.72);' +
+      'padding:4px 6px;border-radius:4px;white-space:pre;';
+    document.body.appendChild(debugEl);
+  }
+  const vv = window.visualViewport;
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:fixed;visibility:hidden;' +
+    'padding:env(safe-area-inset-top) env(safe-area-inset-right) ' +
+    'env(safe-area-inset-bottom) env(safe-area-inset-left);';
+  document.body.appendChild(probe);
+  const ps = getComputedStyle(probe);
+  const sat = ps.paddingTop;
+  const sab = ps.paddingBottom;
+  probe.remove();
+  debugEl.textContent = [
+    `scrH ${window.screen.height}`,
+    `inH  ${window.innerHeight}`,
+    `docH ${document.documentElement.clientHeight}`,
+    `vvH  ${vv ? Math.round(vv.height) : '-'} top ${vv ? Math.round(vv.offsetTop) : '-'}`,
+    `sat ${sat} sab ${sab}`,
+    `appH ${document.documentElement.style.getPropertyValue('--app-height')}`,
+    `kb ${document.documentElement.hasAttribute('data-keyboard') ? '1' : '0'}`,
+  ].join('\n');
+};
+
 // Decide whether to allow a touchmove (vs. block it to stop the page dragging).
 // Allow it when the gesture starts inside something that legitimately consumes
 // touch movement: a scrollable element, or a gesture surface that sets its own
@@ -66,6 +104,7 @@ export function setupViewportHeight(): void {
     root.toggleAttribute('data-keyboard', keyboard);
     // Undo any auto-scroll iOS applied to push content behind the keyboard.
     if (window.scrollY !== 0) window.scrollTo(0, 0);
+    renderViewportDebug();
   };
 
   apply();

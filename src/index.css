@@ -132,7 +132,7 @@ body {
  * above the keyboard.
  */
 :root {
-  --bottom-bar-inset: calc(env(safe-area-inset-bottom) / 6);
+  --bottom-bar-inset: calc(env(safe-area-inset-bottom) / 12);
 }
 html[data-keyboard] {
   --bottom-bar-inset: 0px;
