@@ -104,7 +104,14 @@ async function requestSessionWithTimeout(
 }
 
 self.addEventListener('install', () => {
-  self.skipWaiting();
+  // First install only: activate immediately (nothing old to break, and the
+  // media-auth fetch handler should start working right away). On updates,
+  // stay waiting until every window closes — the running page lazy-loads
+  // chunks from the precache it booted with, and yanking that mid-session
+  // (skipWaiting + cleanupOutdatedCaches) made dynamic imports hit dead
+  // hashed URLs on the server, which answers with the SPA index.html
+  // ("'text/html' is not a valid JavaScript MIME type" on login/route load).
+  if (!self.registration.active) self.skipWaiting();
 });
 
 self.addEventListener('activate', (event: ExtendableEvent) => {
