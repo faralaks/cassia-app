@@ -121,6 +121,20 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
+/*
+ * Bottom inset for bars sitting on the screen's bottom edge (composer, bottom
+ * nav). Half the raw safe-area inset — the full home-indicator inset reads as
+ * a dead band — and zero while the iOS keyboard is open (data-keyboard, set by
+ * setupViewportHeight): the keyboard covers the home-indicator area, so any
+ * remaining inset would show as an empty strip above the keyboard.
+ */
+:root {
+  --bottom-bar-inset: calc(env(safe-area-inset-bottom) / 2);
+}
+html[data-keyboard] {
+  --bottom-bar-inset: 0px;
+}
+
 *,
 *::before,
 *::after {

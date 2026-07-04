@@ -9,8 +9,12 @@ export const BottomNav = style([
     display: 'flex',
     alignItems: 'stretch',
     justifyContent: 'space-around',
-    height: toRem(56),
-    paddingBottom: 'env(safe-area-inset-bottom)',
+    // Compact bar: 48px of content + the shared bottom inset (half the
+    // home-indicator safe area, zero while the keyboard is open). The old
+    // 56px + full inset pushed the icons up against the top border and left
+    // a large dead band underneath.
+    height: toRem(48),
+    paddingBottom: 'var(--bottom-bar-inset, 0px)',
     backgroundColor: color.Background.Container,
     borderTop: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
     color: color.Background.OnContainer,

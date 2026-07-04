@@ -47,6 +47,12 @@ export function setupViewportHeight(): void {
   const apply = () => {
     const height = vv?.height ?? window.innerHeight;
     root.style.setProperty('--app-height', `${Math.round(height)}px`);
+    // Flag keyboard-open state on <html> so CSS can collapse bottom
+    // safe-area paddings (composer, bottom nav) — the keyboard covers the
+    // home-indicator area, so keeping the inset would leave a dead band
+    // above the keyboard. 150px threshold: keyboards are ~300px, while
+    // other visual-viewport occlusions (find bar etc.) are far smaller.
+    root.toggleAttribute('data-keyboard', window.innerHeight - height > 150);
     // Undo any auto-scroll iOS applied to push content behind the keyboard.
     if (window.scrollY !== 0) window.scrollTo(0, 0);
   };

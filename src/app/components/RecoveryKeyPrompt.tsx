@@ -16,17 +16,22 @@ import {
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
 import { stopPropagation } from '../utils/keyboard';
+import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
+import { BottomSheet, OverlayBottom } from './BottomSheet';
 import { SecretStorageRecoveryKey, SecretStorageRecoveryPassphrase } from './SecretStorage';
-import {
-  ManualVerificationMethod,
-  ManualVerificationMethodSwitcher,
-} from './ManualVerification';
+import { ManualVerificationMethod, ManualVerificationMethodSwitcher } from './ManualVerification';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import { useCrossSigningActive } from '../hooks/useCrossSigning';
 import { useDeviceList, useSplitCurrentDevice } from '../hooks/useDeviceList';
-import { useDeviceVerificationStatus, VerificationStatus } from '../hooks/useDeviceVerificationStatus';
+import {
+  useDeviceVerificationStatus,
+  VerificationStatus,
+} from '../hooks/useDeviceVerificationStatus';
 import { AsyncStatus, useAsyncCallback } from '../hooks/useAsyncCallback';
-import { useSecretStorageDefaultKeyId, useSecretStorageKeyContent } from '../hooks/useSecretStorage';
+import {
+  useSecretStorageDefaultKeyId,
+  useSecretStorageKeyContent,
+} from '../hooks/useSecretStorage';
 import { storePrivateKey } from '../../client/secretStorageKeys';
 import { SecretStorageKeyContent } from '../../types/matrix/accountData';
 
@@ -44,17 +49,22 @@ type RecoveryKeyPromptDialogProps = {
   secretStorageKeyId: string;
   secretStorageKeyContent: SecretStorageKeyContent;
   onSkip: () => void;
+  // Mobile bottom-sheet presentation: full width, rounded top, stacked form.
+  sheet?: boolean;
 };
 function RecoveryKeyPromptDialog({
   secretStorageKeyId,
   secretStorageKeyContent,
   onSkip,
+  sheet,
 }: RecoveryKeyPromptDialogProps) {
   const mx = useMatrixClient();
 
   const hasPassphrase = !!secretStorageKeyContent.passphrase;
   const [method, setMethod] = useState(
-    hasPassphrase ? ManualVerificationMethod.RecoveryPassphrase : ManualVerificationMethod.RecoveryKey
+    hasPassphrase
+      ? ManualVerificationMethod.RecoveryPassphrase
+      : ManualVerificationMethod.RecoveryKey
   );
 
   const verifyAndRestoreBackup = useCallback(
@@ -94,11 +104,27 @@ function RecoveryKeyPromptDialog({
   }, [verified, onSkip]);
 
   return (
-    <Dialog variant="Surface" style={{ width: toRem(400) }}>
+    <Dialog
+      variant="Surface"
+      style={
+        sheet
+          ? {
+              width: '100%',
+              maxWidth: '100%',
+              borderRadius: `${toRem(20)} ${toRem(20)} 0 0`,
+              // Clear the home indicator; --bottom-bar-inset collapses while
+              // the keyboard is open so the sheet hugs it with no dead band.
+              paddingBottom: 'calc(var(--bottom-bar-inset, 0px) + 8px)',
+            }
+          : { width: toRem(400) }
+      }
+    >
       <Header
         style={{
           padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
           borderBottomWidth: config.borderWidth.B300,
+          // Leave room for the sheet grabber above the title.
+          paddingTop: sheet ? config.space.S100 : undefined,
         }}
         variant="Surface"
         size="500"
@@ -132,6 +158,7 @@ function RecoveryKeyPromptDialog({
                   processing={verifying}
                   keyContent={secretStorageKeyContent}
                   onDecodedRecoveryKey={handleDecodedRecoveryKey}
+                  stacked={sheet}
                 />
               )}
               {method === ManualVerificationMethod.RecoveryPassphrase &&
@@ -141,6 +168,7 @@ function RecoveryKeyPromptDialog({
                     keyContent={secretStorageKeyContent}
                     passphraseContent={secretStorageKeyContent.passphrase}
                     onDecodedRecoveryKey={handleDecodedRecoveryKey}
+                    stacked={sheet}
                   />
                 )}
               {verifyState.status === AsyncStatus.Error && (
@@ -158,6 +186,7 @@ function RecoveryKeyPromptDialog({
 
 export function RecoveryKeyPrompt() {
   const mx = useMatrixClient();
+  const screenSize = useScreenSizeContext();
   const crossSigningActive = useCrossSigningActive();
 
   const defaultSecretStorageKeyId = useSecretStorageDefaultKeyId();
@@ -186,24 +215,48 @@ export function RecoveryKeyPrompt() {
   if (verificationStatus !== VerificationStatus.Unverified) return null;
   if (!defaultSecretStorageKeyId || !secretStorageKeyContent) return null;
 
+  const mobile = screenSize === ScreenSize.Mobile;
+
   return (
     <Overlay open backdrop={<OverlayBackdrop />}>
-      <OverlayCenter>
-        <FocusTrap
-          focusTrapOptions={{
-            initialFocus: false,
-            onDeactivate: handleSkip,
-            clickOutsideDeactivates: true,
-            escapeDeactivates: stopPropagation,
-          }}
-        >
-          <RecoveryKeyPromptDialog
-            secretStorageKeyId={defaultSecretStorageKeyId}
-            secretStorageKeyContent={secretStorageKeyContent}
-            onSkip={handleSkip}
-          />
-        </FocusTrap>
-      </OverlayCenter>
+      {mobile ? (
+        <OverlayBottom>
+          <FocusTrap
+            focusTrapOptions={{
+              initialFocus: false,
+              onDeactivate: handleSkip,
+              clickOutsideDeactivates: true,
+              escapeDeactivates: stopPropagation,
+            }}
+          >
+            <BottomSheet onDismiss={handleSkip}>
+              <RecoveryKeyPromptDialog
+                secretStorageKeyId={defaultSecretStorageKeyId}
+                secretStorageKeyContent={secretStorageKeyContent}
+                onSkip={handleSkip}
+                sheet
+              />
+            </BottomSheet>
+          </FocusTrap>
+        </OverlayBottom>
+      ) : (
+        <OverlayCenter>
+          <FocusTrap
+            focusTrapOptions={{
+              initialFocus: false,
+              onDeactivate: handleSkip,
+              clickOutsideDeactivates: true,
+              escapeDeactivates: stopPropagation,
+            }}
+          >
+            <RecoveryKeyPromptDialog
+              secretStorageKeyId={defaultSecretStorageKeyId}
+              secretStorageKeyContent={secretStorageKeyContent}
+              onSkip={handleSkip}
+            />
+          </FocusTrap>
+        </OverlayCenter>
+      )}
     </Overlay>
   );
 }
