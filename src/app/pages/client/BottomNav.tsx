@@ -165,10 +165,12 @@ function SettingsNavItem() {
 export function BottomNav() {
   return (
     <nav className={css.BottomNav}>
-      <HomeNavItem />
-      <DirectNavItem />
-      <ExploreNavItem />
-      <SettingsNavItem />
+      <div className={css.BottomNavPill}>
+        <HomeNavItem />
+        <DirectNavItem />
+        <ExploreNavItem />
+        <SettingsNavItem />
+      </div>
     </nav>
   );
 }
