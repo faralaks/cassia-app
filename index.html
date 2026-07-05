@@ -39,15 +39,16 @@
     <meta name="application-name" content="Cassia" />
     <meta name="apple-mobile-web-app-title" content="Cassia" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- Deliberately NO apple-mobile-web-app-status-bar-style meta:
-      - "black-translucent" triggers the iOS 26.x letterbox bug (dead ~62pt
-        band at the screen bottom; see the viewport meta note above);
-      - "default"/"black" force the legacy status-bar chrome, which paints
-        the bar white/black and IGNORES theme-color (verified: the bar stayed
-        white in dark theme while vernik.me, shipping only a theme-color
-        meta, gets a fully tinted bar).
-      Without the meta, iOS tints the status-bar area from the theme-color
-      metas above. Baked at add-to-home-screen time — reinstall to apply. -->
+    <!-- Status bar: always-black bar. On iOS 26.x there is no good option:
+      - "black-translucent" triggers the letterbox bug (dead ~62pt band at
+        the screen bottom; see the viewport meta note above);
+      - "default" / no meta paints the bar white in light OS appearance and
+        ignores theme-color (iOS 26 removed website tinting, so the
+        theme-color metas above can't color it either);
+      - "black" is the one value that is dark regardless of OS appearance,
+        matching the dark theme in daily use.
+      Baked at add-to-home-screen time — reinstall to apply. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
 
     <link
       rel="apple-touch-icon"
