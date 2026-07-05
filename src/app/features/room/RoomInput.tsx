@@ -697,9 +697,21 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             // the text row sits above it instead of under it. Collapses to zero
             // while the keyboard is open (see --bottom-bar-inset in index.css).
             paddingBottom: 'var(--bottom-bar-inset, 0px)',
-            // Breathing room so the circled buttons aren't glued to the screen
-            // edges (Telegram-style bar).
-            ...(mobile ? { paddingLeft: config.space.S200, paddingRight: config.space.S200 } : {}),
+            ...(mobile
+              ? {
+                  // Telegram-style bar: the chat wallpaper shows through, tinted
+                  // by a theme-colored gradient — solid at the screen bottom,
+                  // fading out toward the bar's top edge, so there is no hard
+                  // line between the bar and the wallpaper.
+                  backgroundColor: 'transparent',
+                  background: `linear-gradient(to top, ${color.Background.Container} 25%, transparent)`,
+                  borderTop: 'none',
+                  // Breathing room so the circled buttons aren't glued to the
+                  // screen edges.
+                  paddingLeft: config.space.S200,
+                  paddingRight: config.space.S200,
+                }
+              : {}),
           }}
           onKeyDown={handleKeyDown}
           onKeyUp={handleKeyUp}
