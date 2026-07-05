@@ -47,7 +47,12 @@ export function SwipeToReply({ onReply, children }: SwipeToReplyProps) {
   }
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.x < -REPLY_THRESHOLD) onReply();
+    if (info.offset.x < -REPLY_THRESHOLD) {
+      // Confirmation tick as the message actually attaches as the reply
+      // draft (the arming tick during the drag is separate, above).
+      hapticTap();
+      onReply();
+    }
   };
 
   return (
