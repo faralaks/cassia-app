@@ -9,18 +9,14 @@ import React, {
   useState,
 } from 'react';
 import { MatrixCall } from 'matrix-js-sdk';
-import {
-  CallErrorCode,
-  CallEvent,
-  CallState,
-  CallDirection,
-} from 'matrix-js-sdk/lib/webrtc/call';
+import { CallErrorCode, CallEvent, CallState, CallDirection } from 'matrix-js-sdk/lib/webrtc/call';
 import { CallEventHandlerEvent } from 'matrix-js-sdk/lib/webrtc/callEventHandler';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { getAccountData, getMDirects } from '../../utils/room';
 import { AccountDataEvent } from '../../../types/matrix/accountData';
 import { webRTCSupported } from '../../utils/rtc';
 import { IncomingCallPrompt } from './IncomingCallPrompt';
+import { startCallSession, updateCallSessionMic, endCallSession } from '../../utils/callSession';
 
 // Snapshot of the single active legacy (1:1 VoIP) call, mirrored into React state.
 export type LegacyVoipSnapshot = {
@@ -190,6 +186,48 @@ export function LegacyVoipProvider({ children }: LegacyVoipProviderProps) {
     incoming?.reject();
     setIncoming(null);
   }, [incoming]);
+
+  // Best-effort OS call integration while a call is active: iOS
+  // play-and-record audio session, screen wake lock (auto-lock was killing
+  // calls), media-session metadata + hangup/mic actions. See callSession.ts.
+  useEffect(() => {
+    if (!snapshot.active) return undefined;
+    startCallSession(snapshot.peerId ?? 'Voice call', {
+      onHangup: hangup,
+      onToggleMic: toggleMute,
+    });
+    return () => endCallSession();
+  }, [snapshot.active, snapshot.peerId, hangup, toggleMute]);
+
+  useEffect(() => {
+    if (snapshot.active) updateCallSessionMic(snapshot.muted);
+  }, [snapshot.active, snapshot.muted]);
+
+  // Mic self-heal: iOS suspends capture when the app is backgrounded /
+  // screen-locked and the dead track never recovers by itself — the call
+  // continues with a silent mic. On return to foreground, if the local audio
+  // track died (or stayed OS-muted), rebuild it via a mute/unmute cycle
+  // (the SDK re-acquires the microphone on unmute).
+  useEffect(() => {
+    if (!snapshot.active) return undefined;
+    const recover = () => {
+      if (document.visibilityState !== 'visible') return;
+      window.setTimeout(() => {
+        const call = callRef.current;
+        if (!call || call.state !== CallState.Connected || call.isMicrophoneMuted()) return;
+        const track = call.localUsermediaStream?.getAudioTracks()[0];
+        if (!track || track.readyState === 'ended' || track.muted) {
+          call
+            .setMicrophoneMuted(true)
+            .then(() => call.setMicrophoneMuted(false))
+            .catch(() => undefined)
+            .finally(sync);
+        }
+      }, 500);
+    };
+    document.addEventListener('visibilitychange', recover);
+    return () => document.removeEventListener('visibilitychange', recover);
+  }, [snapshot.active, sync]);
 
   useEffect(() => {
     const onIncoming = (call: MatrixCall) => {
