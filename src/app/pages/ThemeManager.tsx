@@ -24,11 +24,15 @@ const themeColorVarName = color.Background.Container.replace(/^var\(/, '')
 const syncThemeColorMeta = () => {
   const value = getComputedStyle(document.body).getPropertyValue(themeColorVarName).trim();
   if (!value) return;
-  const meta = document.querySelector('meta[name="theme-color"]');
-  meta?.setAttribute('content', value);
-  // Paint the <html> canvas too: with viewport-fit=cover the safe-area strip
-  // around the Dynamic Island (above #root's padding) shows the <html>
-  // background — without this it stays white regardless of theme.
+  // Both scheme-qualified metas (see index.html) get the active in-app theme
+  // color — the app theme wins over the OS scheme wherever the browser
+  // honors live updates.
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute('content', value);
+  });
+  // Paint the <html> canvas too: any screen area the app doesn't cover (e.g.
+  // around the status bar / keyboard band) shows the <html> background —
+  // without this it stays white regardless of theme.
   document.documentElement.style.backgroundColor = value;
 };
 

@@ -25,7 +25,12 @@
       property="og:description"
       content="A Telegram Desktop inspired Matrix client, secured by e2ee and built on open source. Forked from Cinny."
     />
-    <meta name="theme-color" content="#000000" />
+    <!-- Colors the iOS/Android status-bar area. Static per-scheme defaults for
+      launch/install time; ThemeManager overwrites both with the active in-app
+      theme color at runtime. Values mirror Background.Container of the light
+      (#F2F2F2) and dark (#1A1A1A) themes. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F2F2F2" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1A1A1A" />
 
     <link id="favicon" rel="shortcut icon" href="./public/favicon.ico" />
 
@@ -34,14 +39,15 @@
     <meta name="application-name" content="Cassia" />
     <meta name="apple-mobile-web-app-title" content="Cassia" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- "default", not "black-translucent": on iOS 26.x (incl. 26.5) translucent
-      web apps get a letterboxed viewport — sized minus the status bar but
-      anchored at the screen top, leaving a dead ~62pt band at the bottom
-      (WebKit #301994 class of bugs). With "default" the same view sits below
-      the status bar and reaches the true screen bottom; iOS paints the bar
-      area from the theme-color meta, which ThemeManager keeps in sync with
-      the active theme. Baked at add-to-home-screen time — reinstall to apply. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- Deliberately NO apple-mobile-web-app-status-bar-style meta:
+      - "black-translucent" triggers the iOS 26.x letterbox bug (dead ~62pt
+        band at the screen bottom; see the viewport meta note above);
+      - "default"/"black" force the legacy status-bar chrome, which paints
+        the bar white/black and IGNORES theme-color (verified: the bar stayed
+        white in dark theme while vernik.me, shipping only a theme-color
+        meta, gets a fully tinted bar).
+      Without the meta, iOS tints the status-bar area from the theme-color
+      metas above. Baked at add-to-home-screen time — reinstall to apply. -->
 
     <link
       rel="apple-touch-icon"
