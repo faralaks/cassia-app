@@ -975,14 +975,28 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     return () => scrollEl.removeEventListener('wheel', onWheel);
   }, []);
 
-  // Native chat behavior: dragging the timeline dismisses the keyboard. Blur
-  // whatever editable is focused (the composer) when a touch-scroll starts
-  // outside of it — touchmove only fires on touch devices, so desktop is
-  // untouched.
+  // Native chat behavior: a quick downward flick on the timeline dismisses
+  // the keyboard. Deliberately velocity-gated — slow scrolling through
+  // history must NOT close it, only a fast top-to-bottom impulse (like
+  // flicking toward the keyboard in native chat apps). Touch-only; desktop
+  // is untouched.
   useEffect(() => {
     const scrollEl = scrollRef.current;
     if (!scrollEl) return undefined;
-    const onTouchMove = () => {
+    let start: { y: number; t: number } | null = null;
+    const onTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      start = touch ? { y: touch.clientY, t: performance.now() } : null;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!start) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const dy = touch.clientY - start.y;
+      const dt = Math.max(performance.now() - start.t, 1);
+      // ≥48px downward at ≥0.5px/ms — a flick, not a browse-scroll.
+      if (dy < 48 || dy / dt < 0.5) return;
+      start = null;
       const active = document.activeElement;
       if (!active || scrollEl.contains(active)) return;
       if (
@@ -992,8 +1006,12 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         active.blur();
       }
     };
+    scrollEl.addEventListener('touchstart', onTouchStart, { passive: true });
     scrollEl.addEventListener('touchmove', onTouchMove, { passive: true });
-    return () => scrollEl.removeEventListener('touchmove', onTouchMove);
+    return () => {
+      scrollEl.removeEventListener('touchstart', onTouchStart);
+      scrollEl.removeEventListener('touchmove', onTouchMove);
+    };
   }, []);
 
   // Scroll to bottom on initial timeline load

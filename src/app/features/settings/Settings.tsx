@@ -35,6 +35,7 @@ import { SettingsCloseAllProvider } from '../../components/SettingsPageCloseButt
 import { UseStateProvider } from '../../components/UseStateProvider';
 import { stopPropagation } from '../../utils/keyboard';
 import { LogoutDialog } from '../../components/LogoutDialog';
+import { SwipeToGoBack } from '../../components/SwipeToGoBack';
 
 export enum SettingsPages {
   GeneralPage,
@@ -130,125 +131,133 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
   };
 
   return (
-    <PageRoot
-      nav={
-        screenSize === ScreenSize.Mobile && activePage !== undefined ? undefined : (
-          <PageNav size="300">
-            <PageNavHeader outlined={false}>
-              <Box grow="Yes" gap="200">
-                <Avatar size="200" radii="Pill">
-                  <UserAvatar
-                    userId={userId}
-                    src={avatarUrl}
-                    renderFallback={() => <Text size="H6">{nameInitials(displayName)}</Text>}
-                  />
-                </Avatar>
-                <Text size="H4" truncate>
-                  Settings
-                </Text>
-              </Box>
-              <Box shrink="No">
-                {screenSize === ScreenSize.Mobile && (
-                  <IconButton onClick={requestClose} variant="Background">
-                    <Icon src={Icons.Cross} />
-                  </IconButton>
-                )}
-              </Box>
-            </PageNavHeader>
-            <Box grow="Yes" direction="Column">
-              <PageNavContent>
-                <div style={{ flexGrow: 1 }}>
-                  {menuItems.map((item) => (
-                    <MenuItem
-                      key={item.name}
-                      variant="Background"
-                      radii="400"
-                      size={screenSize === ScreenSize.Mobile ? '400' : '300'}
-                      aria-pressed={activePage === item.page}
-                      before={
-                        <Icon
-                          src={item.icon}
-                          size={screenSize === ScreenSize.Mobile ? '200' : '100'}
-                          filled={activePage === item.page}
-                        />
-                      }
-                      onClick={() => setActivePage(item.page)}
-                    >
-                      <Text
-                        style={{
-                          fontWeight: activePage === item.page ? config.fontWeight.W600 : undefined,
-                        }}
-                        size={screenSize === ScreenSize.Mobile ? 'T400' : 'T300'}
-                        truncate
-                      >
-                        {item.name}
-                      </Text>
-                    </MenuItem>
-                  ))}
-                </div>
-              </PageNavContent>
-              <Box style={{ padding: config.space.S200 }} shrink="No" direction="Column">
-                <UseStateProvider initial={false}>
-                  {(logout, setLogout) => (
-                    <>
-                      <Button
-                        size="300"
-                        variant="Critical"
-                        fill="None"
-                        radii="Pill"
-                        before={<Icon src={Icons.Power} size="100" />}
-                        onClick={() => setLogout(true)}
-                      >
-                        <Text size="B400">Logout</Text>
-                      </Button>
-                      {logout && (
-                        <Overlay open backdrop={<OverlayBackdrop />}>
-                          <OverlayCenter>
-                            <FocusTrap
-                              focusTrapOptions={{
-                                onDeactivate: () => setLogout(false),
-                                clickOutsideDeactivates: true,
-                                escapeDeactivates: stopPropagation,
-                              }}
-                            >
-                              <LogoutDialog handleClose={() => setLogout(false)} />
-                            </FocusTrap>
-                          </OverlayCenter>
-                        </Overlay>
-                      )}
-                    </>
+    <Box grow="Yes" style={{ position: 'relative', width: '100%' }}>
+      {/* Edge swipe: step back from a settings page to the menu, or close
+          settings entirely from the menu (mobile only). */}
+      <SwipeToGoBack onBack={activePage !== undefined ? handlePageRequestClose : requestClose} />
+      <PageRoot
+        nav={
+          screenSize === ScreenSize.Mobile && activePage !== undefined ? undefined : (
+            <PageNav size="300">
+              <PageNavHeader outlined={false}>
+                <Box grow="Yes" gap="200">
+                  <Avatar size="200" radii="Pill">
+                    <UserAvatar
+                      userId={userId}
+                      src={avatarUrl}
+                      renderFallback={() => <Text size="H6">{nameInitials(displayName)}</Text>}
+                    />
+                  </Avatar>
+                  <Text size="H4" truncate>
+                    Settings
+                  </Text>
+                </Box>
+                <Box shrink="No">
+                  {screenSize === ScreenSize.Mobile && (
+                    <IconButton onClick={requestClose} variant="Background">
+                      <Icon src={Icons.Cross} />
+                    </IconButton>
                   )}
-                </UseStateProvider>
+                </Box>
+              </PageNavHeader>
+              <Box grow="Yes" direction="Column">
+                <PageNavContent>
+                  <div style={{ flexGrow: 1 }}>
+                    {menuItems.map((item) => (
+                      <MenuItem
+                        key={item.name}
+                        variant="Background"
+                        radii="400"
+                        size={screenSize === ScreenSize.Mobile ? '400' : '300'}
+                        aria-pressed={activePage === item.page}
+                        before={
+                          <Icon
+                            src={item.icon}
+                            size={screenSize === ScreenSize.Mobile ? '200' : '100'}
+                            filled={activePage === item.page}
+                          />
+                        }
+                        onClick={() => setActivePage(item.page)}
+                      >
+                        <Text
+                          style={{
+                            fontWeight:
+                              activePage === item.page ? config.fontWeight.W600 : undefined,
+                          }}
+                          size={screenSize === ScreenSize.Mobile ? 'T400' : 'T300'}
+                          truncate
+                        >
+                          {item.name}
+                        </Text>
+                      </MenuItem>
+                    ))}
+                  </div>
+                </PageNavContent>
+                <Box style={{ padding: config.space.S200 }} shrink="No" direction="Column">
+                  <UseStateProvider initial={false}>
+                    {(logout, setLogout) => (
+                      <>
+                        <Button
+                          size="300"
+                          variant="Critical"
+                          fill="None"
+                          radii="Pill"
+                          before={<Icon src={Icons.Power} size="100" />}
+                          onClick={() => setLogout(true)}
+                        >
+                          <Text size="B400">Logout</Text>
+                        </Button>
+                        {logout && (
+                          <Overlay open backdrop={<OverlayBackdrop />}>
+                            <OverlayCenter>
+                              <FocusTrap
+                                focusTrapOptions={{
+                                  onDeactivate: () => setLogout(false),
+                                  clickOutsideDeactivates: true,
+                                  escapeDeactivates: stopPropagation,
+                                }}
+                              >
+                                <LogoutDialog handleClose={() => setLogout(false)} />
+                              </FocusTrap>
+                            </OverlayCenter>
+                          </Overlay>
+                        )}
+                      </>
+                    )}
+                  </UseStateProvider>
+                </Box>
               </Box>
-            </Box>
-          </PageNav>
-        )
-      }
-    >
-      <SettingsCloseAllProvider closeAll={requestClose}>
-        {activePage === SettingsPages.GeneralPage && (
-          <General requestClose={handlePageRequestClose} />
-        )}
-        {activePage === SettingsPages.ChatStylePage && (
-          <ChatStylePage requestClose={handlePageRequestClose} />
-        )}
-        {activePage === SettingsPages.AccountPage && (
-          <Account requestClose={handlePageRequestClose} />
-        )}
-        {activePage === SettingsPages.NotificationPage && (
-          <Notifications requestClose={handlePageRequestClose} />
-        )}
-        {activePage === SettingsPages.DevicesPage && (
-          <Devices requestClose={handlePageRequestClose} />
-        )}
-        {activePage === SettingsPages.EmojisStickersPage && (
-          <EmojisStickers requestClose={handlePageRequestClose} />
-        )}
-        {activePage === SettingsPages.DeveloperToolsPage && (
-          <DeveloperTools requestClose={handlePageRequestClose} />
-        )}
-        {activePage === SettingsPages.AboutPage && <About requestClose={handlePageRequestClose} />}
-      </SettingsCloseAllProvider>
-    </PageRoot>
+            </PageNav>
+          )
+        }
+      >
+        <SettingsCloseAllProvider closeAll={requestClose}>
+          {activePage === SettingsPages.GeneralPage && (
+            <General requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.ChatStylePage && (
+            <ChatStylePage requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.AccountPage && (
+            <Account requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.NotificationPage && (
+            <Notifications requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.DevicesPage && (
+            <Devices requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.EmojisStickersPage && (
+            <EmojisStickers requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.DeveloperToolsPage && (
+            <DeveloperTools requestClose={handlePageRequestClose} />
+          )}
+          {activePage === SettingsPages.AboutPage && (
+            <About requestClose={handlePageRequestClose} />
+          )}
+        </SettingsCloseAllProvider>
+      </PageRoot>
+    </Box>
   );
 }

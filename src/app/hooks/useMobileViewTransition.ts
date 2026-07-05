@@ -7,6 +7,21 @@ export type VtDirection = 'forward' | 'back' | 'fade';
 const supportsViewTransitions = (): boolean =>
   typeof document !== 'undefined' && typeof document.startViewTransition === 'function';
 
+let vtCleanupTimer: number | undefined;
+
+// Remove the direction attributes right after the ~280ms slide finishes.
+// They used to stay on <html> forever, so any later view transition (e.g. a
+// follow-up router navigation) replayed the slide animation on an unchanged
+// screen — the "double animation" jerk after swiping back. Once cleared,
+// stray transitions fall back to an imperceptible cross-fade.
+const scheduleVtCleanup = () => {
+  window.clearTimeout(vtCleanupTimer);
+  vtCleanupTimer = window.setTimeout(() => {
+    document.documentElement.removeAttribute('data-vt-mobile');
+    document.documentElement.removeAttribute('data-vt');
+  }, 400);
+};
+
 /**
  * Navigate with a native-feeling slide transition on mobile.
  *
@@ -28,6 +43,7 @@ export const useMobileViewTransitionNavigate = () => {
         const html = document.documentElement;
         html.setAttribute('data-vt-mobile', '');
         html.setAttribute('data-vt', direction);
+        scheduleVtCleanup();
       }
 
       if (typeof to === 'number') {
