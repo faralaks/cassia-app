@@ -80,11 +80,12 @@ export const MessageBase = recipe({
 
       '@media': {
         // On phones bubbles should almost touch their own edge (outgoing →
-        // right, incoming → left) — the default gutter wastes width. Keep a
-        // hairline inset so they don't visually collide with the screen edge.
+        // right, incoming → left). Incoming has no tail on mobile → hairline
+        // 4px; outgoing keeps its 8px-overhanging tail, so 12px of padding
+        // puts the tail tip ~4px from the screen edge.
         [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
           paddingLeft: config.space.S100,
-          paddingRight: config.space.S100,
+          paddingRight: toRem(12),
         },
       },
     },
@@ -156,7 +157,9 @@ export const BubbleContent = style({
     // Also disable text selection / the iOS long-press callout so a tap-and-hold
     // opens the message menu instead of starting a selection.
     [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
-      maxWidth: '75vw',
+      // With the avatar gutter gone the row has the full width — cap a bit
+      // higher so bubbles can use it (Telegram sits around ~80%).
+      maxWidth: '80vw',
       fontSize: toRem(14),
       WebkitTouchCallout: 'none',
       WebkitUserSelect: 'none',

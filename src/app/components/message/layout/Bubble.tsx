@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import classNames from 'classnames';
 import { Box, ContainerColor, as, color } from 'folds';
 import * as css from './layout.css';
+import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
 
 type BubbleArrowProps = {
   variant: ContainerColor;
@@ -55,33 +56,70 @@ type BubbleLayoutProps = {
 };
 
 export const BubbleLayout = as<'div', BubbleLayoutProps>(
-  ({ hideBubble, before, header, children, isOwn, ...props }, ref) => (
-    <Box gap="300" justifyContent={isOwn ? 'End' : 'Start'} {...props} ref={ref}>
-      {!isOwn && (
-        <Box className={css.BubbleBefore} shrink="No">
-          {before}
+  ({ hideBubble, before, header, children, isOwn, ...props }, ref) => {
+    const mobile = useScreenSizeContext() === ScreenSize.Mobile;
+
+    // Mobile portrait: no avatar gutter — the sender avatar sits inline with
+    // the header row ABOVE the message group, so bubbles (incoming and
+    // outgoing alike) hug their screen edge instead of losing ~50px to the
+    // side column. The left bubble arrow goes with the gutter; the outgoing
+    // arrow stays.
+    if (mobile) {
+      return (
+        <Box justifyContent={isOwn ? 'End' : 'Start'} {...props} ref={ref}>
+          <Box grow="No" direction="Column" alignItems={isOwn ? 'End' : 'Start'} gap="100">
+            {(header || (!isOwn && before)) && (
+              <Box alignItems="Center" gap="200">
+                {!isOwn && before}
+                {header}
+              </Box>
+            )}
+            {hideBubble ? (
+              children
+            ) : (
+              <Box>
+                <Box
+                  className={isOwn ? css.BubbleContentOwn : css.BubbleContent}
+                  direction="Column"
+                >
+                  {isOwn ? <BubbleRightArrow variant="Primary" /> : null}
+                  {children}
+                </Box>
+              </Box>
+            )}
+          </Box>
         </Box>
-      )}
-      <Box grow="No" direction="Column" alignItems={isOwn ? 'End' : 'Start'}>
-        {header}
-        {hideBubble ? (
-          children
-        ) : (
-          <Box>
-            <Box
-              className={classNames(
-                isOwn ? css.BubbleContentOwn : css.BubbleContent,
-                !isOwn && before ? css.BubbleContentArrowLeft : undefined
-              )}
-              direction="Column"
-            >
-              {!isOwn && before ? <BubbleLeftArrow variant="SurfaceVariant" /> : null}
-              {isOwn ? <BubbleRightArrow variant="Primary" /> : null}
-              {children}
-            </Box>
+      );
+    }
+
+    return (
+      <Box gap="300" justifyContent={isOwn ? 'End' : 'Start'} {...props} ref={ref}>
+        {!isOwn && (
+          <Box className={css.BubbleBefore} shrink="No">
+            {before}
           </Box>
         )}
+        <Box grow="No" direction="Column" alignItems={isOwn ? 'End' : 'Start'}>
+          {header}
+          {hideBubble ? (
+            children
+          ) : (
+            <Box>
+              <Box
+                className={classNames(
+                  isOwn ? css.BubbleContentOwn : css.BubbleContent,
+                  !isOwn && before ? css.BubbleContentArrowLeft : undefined
+                )}
+                direction="Column"
+              >
+                {!isOwn && before ? <BubbleLeftArrow variant="SurfaceVariant" /> : null}
+                {isOwn ? <BubbleRightArrow variant="Primary" /> : null}
+                {children}
+              </Box>
+            </Box>
+          )}
+        </Box>
       </Box>
-    </Box>
-  )
+    );
+  }
 );
