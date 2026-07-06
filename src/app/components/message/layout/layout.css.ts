@@ -80,12 +80,12 @@ export const MessageBase = recipe({
 
       '@media': {
         // On phones bubbles should almost touch their own edge (outgoing →
-        // right, incoming → left). Incoming has no tail on mobile → hairline
-        // 4px; outgoing keeps its 8px-overhanging tail, so 12px of padding
-        // puts the tail tip ~4px from the screen edge.
+        // right, incoming → left) with the same hairline inset on both sides.
+        // Neither direction renders a tail on mobile (see BubbleRightArrow),
+        // so 4px works symmetrically.
         [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
           paddingLeft: config.space.S100,
-          paddingRight: toRem(12),
+          paddingRight: config.space.S100,
         },
       },
     },
@@ -188,6 +188,14 @@ export const BubbleContentOwn = style([
     backgroundColor: `var(--bubble-outgoing-bg, rgba(70, 90, 180, 0.85))`,
     color: `var(--bubble-outgoing-text, #ffffff)`,
     borderTopRightRadius: 0,
+
+    '@media': {
+      // No tail on mobile (it would overhang the hairline edge inset) — keep
+      // the corner rounded like the rest of the bubble.
+      [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
+        borderTopRightRadius: `var(--bubble-radius, ${config.radii.R500})`,
+      },
+    },
   },
 ]);
 
@@ -199,6 +207,12 @@ export const BubbleRightArrow = style({
   top: 0,
   right: toRem(-8),
   zIndex: 1,
+
+  '@media': {
+    [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
+      display: 'none',
+    },
+  },
 });
 
 globalStyle(`[data-selected="true"] .${BubbleContent}`, {
