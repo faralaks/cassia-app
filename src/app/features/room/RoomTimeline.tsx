@@ -88,6 +88,7 @@ import {
   reactionOrEditEvent,
 } from '../../utils/room';
 import { useSetting } from '../../state/hooks/settings';
+import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 import { MessageLayout, settingsAtom } from '../../state/settings';
 import { useMatrixEventRenderer } from '../../hooks/useMatrixEventRenderer';
 import { Reactions, Message, Event, EncryptedContent } from './message';
@@ -470,6 +471,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
   const [messageLayout] = useSetting(settingsAtom, 'messageLayout');
   const [messageSpacing] = useSetting(settingsAtom, 'messageSpacing');
+  const screenSize = useScreenSizeContext();
   const [legacyUsernameColor] = useSetting(settingsAtom, 'legacyUsernameColor');
   const direct = useIsDirectRoom();
   const [hideMembershipEvents] = useSetting(settingsAtom, 'hideMembershipEvents');
@@ -2200,7 +2202,15 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             </Chip>
           </TimelineFloat>
         )}
-        <Scroll ref={scrollRef} visibility="Hover">
+        <Scroll
+          ref={scrollRef}
+          visibility="Hover"
+          // On phones the styled webkit scrollbar becomes a classic
+          // space-consuming one, insetting the whole timeline from the right
+          // edge (outgoing bubbles couldn't reach it). Hide it — touch
+          // scrolling needs no track.
+          size={screenSize === ScreenSize.Mobile ? '0' : undefined}
+        >
           <Box
             ref={contentRef}
             direction="Column"
