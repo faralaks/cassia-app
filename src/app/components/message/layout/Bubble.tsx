@@ -81,6 +81,9 @@ export const BubbleLayout = as<'div', BubbleLayoutProps>(
                 <Box
                   className={isOwn ? css.BubbleContentOwn : css.BubbleContent}
                   direction="Column"
+                  // Marker for the mobile bottom-corner tails (see the
+                  // last-of-group :has() rules in message/styles.css.ts).
+                  data-bubble={isOwn ? 'own' : 'in'}
                 >
                   {isOwn ? <BubbleRightArrow variant="Primary" /> : null}
                   {children}

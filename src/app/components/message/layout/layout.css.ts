@@ -79,13 +79,13 @@ export const MessageBase = recipe({
       borderRadius: `0 ${config.radii.R400} ${config.radii.R400} 0`,
 
       '@media': {
-        // On phones bubbles should almost touch their own edge (outgoing →
-        // right, incoming → left) with the same hairline inset on both sides.
-        // Neither direction renders a tail on mobile (see BubbleRightArrow),
-        // so 4px works symmetrically.
+        // On phones bubbles hug their own edge with a symmetric 8px inset —
+        // exactly the width of the bottom-corner tails (message/styles.css.ts),
+        // so on the last message of a group the tail tip touches the screen
+        // edge instead of overflowing the scroller.
         [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
-          paddingLeft: config.space.S100,
-          paddingRight: config.space.S100,
+          paddingLeft: toRem(8),
+          paddingRight: toRem(8),
         },
       },
     },
