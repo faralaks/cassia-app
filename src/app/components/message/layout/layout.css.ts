@@ -215,6 +215,31 @@ export const BubbleRightArrow = style({
   },
 });
 
+/*
+ * Mobile bottom-corner tails (Telegram-style curved sweep), one per bubble.
+ * The svg is 10px wide, offset -8px: 2px tuck UNDER the bubble edge so no
+ * antialiasing seam shows between tail and bubble, 8px outside — exactly the
+ * row's side inset, so the tip lands on the screen edge without overflowing
+ * the scroller.
+ */
+export const BubbleBottomTailOwn = style({
+  position: 'absolute',
+  bottom: 0,
+  right: toRem(-8),
+  width: toRem(10),
+  height: toRem(13),
+  pointerEvents: 'none',
+});
+
+export const BubbleBottomTailIn = style({
+  position: 'absolute',
+  bottom: 0,
+  left: toRem(-8),
+  width: toRem(10),
+  height: toRem(13),
+  pointerEvents: 'none',
+});
+
 globalStyle(`[data-selected="true"] .${BubbleContent}`, {
   filter: 'brightness(1.5)',
 });
