@@ -2,6 +2,12 @@
 
 A Telegram Desktop inspired Matrix client, forked from [Cinny](https://github.com/cinnyapp/cinny).
 
+## Getting started
+Cassia can currently be used via browser at [cassia.faralaks.dev](https://cassia.faralaks.dev)
+on desktop and mobile devices. On phones it can also be added to the home screen to turn it
+into a PWA — a full app experience. You can also self-host your own instance (see below).
+
+## About
 This is a personal fork built to run against a self-hosted homeserver. Most of the changes on
 top of upstream Cinny were written with Claude (Anthropic's AI assistant) and have **not** been
 fully human-reviewed — use it at your own risk, no warranty is provided.
@@ -12,9 +18,6 @@ closer to what Telegram Desktop feels like. For a tour of what this fork changes
 
 Huge thanks to [Ajay Bura](https://github.com/ajbura) and the Cinny contributors for the
 original project this fork is built on.
-
-## Getting started
-There is no public hosted instance — Cassia is meant to be self-hosted.
 
 ## Self-hosting
 To host Cassia on your own, clone this repo and build it yourself (see Local development below), or pull/build a docker image.
