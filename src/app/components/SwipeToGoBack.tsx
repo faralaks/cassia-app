@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { motion, useReducedMotion, type PanInfo } from 'motion/react';
 import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
 
@@ -7,6 +7,8 @@ const BACK_DISTANCE = 80;
 const BACK_VELOCITY = 400;
 // Width of the left-edge zone that starts the gesture (iOS-style edge swipe).
 const EDGE_WIDTH = 24;
+// Ignore repeat triggers while the previous back navigation is animating.
+const REPEAT_GUARD_MS = 500;
 
 type SwipeToGoBackProps = {
   onBack: () => void;
@@ -19,6 +21,7 @@ type SwipeToGoBackProps = {
 export function SwipeToGoBack({ onBack }: SwipeToGoBackProps) {
   const screenSize = useScreenSizeContext();
   const reduceMotion = useReducedMotion();
+  const lastFired = useRef(0);
 
   if (screenSize !== ScreenSize.Mobile) {
     return null;
@@ -26,6 +29,11 @@ export function SwipeToGoBack({ onBack }: SwipeToGoBackProps) {
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.x > BACK_DISTANCE || info.velocity.x > BACK_VELOCITY) {
+      // A quick second flick during the back animation would navigate again
+      // (visible as a doubled transition) — swallow it.
+      const now = Date.now();
+      if (now - lastFired.current < REPEAT_GUARD_MS) return;
+      lastFired.current = now;
       onBack();
     }
   };

@@ -11,6 +11,7 @@ import {
   MenuItem,
   PopOut,
   RectCords,
+  Spinner,
   Text,
   config,
   toRem,
@@ -339,22 +340,34 @@ export function Home() {
     [mx, inviteRooms]
   );
   const roomInvites = useMemo(
-    () =>
-      inviteRooms.filter(
-        (room) => !isDirectInvite(room, mx.getSafeUserId()) && !isSpace(room)
-      ),
+    () => inviteRooms.filter((room) => !isDirectInvite(room, mx.getSafeUserId()) && !isSpace(room)),
     [mx, inviteRooms]
   );
 
-  const noRoomToDisplay =
-    rooms.length === 0 && directs.length === 0 && inviteRooms.length === 0;
+  const noRoomToDisplay = rooms.length === 0 && directs.length === 0 && inviteRooms.length === 0;
+  // Don't flash the "No Rooms" empty state during startup: the room list is
+  // briefly empty while the client hydrates — and the room-list atoms fill in
+  // *after* isInitialSyncComplete() flips, so a sync check alone still
+  // flashed. Only trust an empty list once it has stayed empty for a moment;
+  // until then show a quiet spinner.
+  const [emptySettled, setEmptySettled] = useState(false);
+  useEffect(() => {
+    if (!noRoomToDisplay) {
+      setEmptySettled(false);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setEmptySettled(true), 800);
+    return () => window.clearTimeout(timer);
+  }, [noRoomToDisplay]);
   const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
 
   const [activityTick, setActivityTick] = useState(0);
   useEffect(() => {
     const handle = () => setActivityTick((t) => t + 1);
     mx.on(RoomEvent.Timeline, handle);
-    return () => { mx.off(RoomEvent.Timeline, handle); };
+    return () => {
+      mx.off(RoomEvent.Timeline, handle);
+    };
   }, [mx]);
 
   const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
@@ -382,9 +395,13 @@ export function Home() {
   return (
     <PageNav>
       <HomeHeader />
-      {noRoomToDisplay ? (
-        <HomeEmpty />
-      ) : (
+      {noRoomToDisplay && !emptySettled ? (
+        <Box grow="Yes" alignItems="Center" justifyContent="Center">
+          <Spinner size="600" variant="Secondary" fill="Soft" />
+        </Box>
+      ) : null}
+      {noRoomToDisplay && emptySettled ? <HomeEmpty /> : null}
+      {!noRoomToDisplay && (
         <PageNavContent scrollRef={scrollRef}>
           <Box direction="Column" gap="300">
             {(sortedDirects.length > 0 || directInvites.length > 0) && (

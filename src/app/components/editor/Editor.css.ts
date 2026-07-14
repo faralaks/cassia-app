@@ -41,6 +41,32 @@ export const EditorTextarea = style([
   },
 ]);
 
+/*
+ * Telegram-style mobile composer: the text area is a rounded pill sitting
+ * between circled icon buttons, with a slightly larger font. Applied via the
+ * Editor `pill` prop (mobile only); desktop keeps the flat layout above.
+ */
+export const EditorTextareaScrollPill = style({
+  borderRadius: toRem(21),
+  backgroundColor: color.Surface.Container,
+  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+  // Center the single-line pill against the taller circled buttons.
+  alignSelf: 'center',
+});
+
+export const EditorTextareaPill = style({
+  padding: `${toRem(10)} ${toRem(14)}`,
+  fontSize: toRem(17),
+  lineHeight: toRem(22),
+});
+
+export const EditorPlaceholderTextPill = style({
+  paddingTop: toRem(10),
+  paddingLeft: toRem(14),
+  fontSize: toRem(17),
+  lineHeight: toRem(22),
+});
+
 export const EditorPlaceholderContainer = style([
   DefaultReset,
   {

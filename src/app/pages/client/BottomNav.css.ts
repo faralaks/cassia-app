@@ -7,14 +7,29 @@ export const BottomNav = style([
   {
     flexShrink: 0,
     display: 'flex',
+    // Transparent wrapper that reserves space and the bottom inset; the
+    // visible bar is the floating pill inside, detached from the screen
+    // edges like modern iOS tab bars (Telegram-style, minus the glass).
+    padding: `${toRem(6)} ${toRem(12)} calc(${toRem(6)} + var(--bottom-bar-inset, 0px))`,
+    zIndex: config.zIndex.Z100,
+  },
+]);
+
+export const BottomNavPill = style([
+  DefaultReset,
+  {
+    flexGrow: 1,
+    display: 'flex',
     alignItems: 'stretch',
     justifyContent: 'space-around',
-    height: toRem(56),
-    paddingBottom: 'env(safe-area-inset-bottom)',
-    backgroundColor: color.Background.Container,
-    borderTop: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
-    color: color.Background.OnContainer,
-    zIndex: config.zIndex.Z100,
+    height: toRem(52),
+    borderRadius: toRem(26),
+    // Item press highlights are square; clip them to the pill shape.
+    overflow: 'hidden',
+    backgroundColor: color.Surface.Container,
+    border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.18)',
+    color: color.Surface.OnContainer,
   },
 ]);
 
@@ -32,11 +47,14 @@ export const BottomNavItem = recipe({
       justifyContent: 'center',
       gap: toRem(2),
       cursor: 'pointer',
-      color: color.Background.OnContainer,
+      color: color.Surface.OnContainer,
+      // Subtle press feedback (matches chat list rows).
+      transition: 'transform 120ms ease, background-color 120ms ease',
 
       selectors: {
         '&:active': {
-          backgroundColor: color.Background.ContainerActive,
+          backgroundColor: color.Surface.ContainerActive,
+          transform: 'scale(0.96)',
         },
       },
     },

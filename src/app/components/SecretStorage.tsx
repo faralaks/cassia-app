@@ -15,12 +15,16 @@ type SecretStorageRecoveryPassphraseProps = {
   keyContent: SecretStorageKeyContent;
   passphraseContent: SecretStoragePassphraseContent;
   onDecodedRecoveryKey: (recoveryKey: Uint8Array) => void;
+  // Bottom-sheet layout: large input with a full-width button underneath,
+  // instead of the compact input+button row used in desktop dialogs.
+  stacked?: boolean;
 };
 export function SecretStorageRecoveryPassphrase({
   processing,
   keyContent,
   passphraseContent,
   onDecodedRecoveryKey,
+  stacked,
 }: SecretStorageRecoveryPassphraseProps) {
   const mx = useMatrixClient();
   const alive = useAlive();
@@ -74,13 +78,17 @@ export function SecretStorageRecoveryPassphrase({
   };
 
   return (
-    <Box as="form" onSubmit={handleSubmit} direction="Column" gap="100">
-      <Box gap="200" alignItems="End">
+    <Box as="form" onSubmit={handleSubmit} direction="Column" gap={stacked ? '300' : '100'}>
+      <Box
+        gap="200"
+        direction={stacked ? 'Column' : 'Row'}
+        alignItems={stacked ? undefined : 'End'}
+      >
         <Box grow="Yes" direction="Column" gap="100">
           <Text size="L400">Recovery Passphrase</Text>
           <PasswordInput
             name="recoveryPassphraseInput"
-            size="400"
+            size={stacked ? '500' : '400'}
             variant="Secondary"
             radii="300"
             autoFocus
@@ -89,11 +97,11 @@ export function SecretStorageRecoveryPassphrase({
             readOnly={loading}
           />
         </Box>
-        <Box shrink="No" gap="200">
+        <Box shrink="No" gap="200" direction="Column">
           <Button
             type="submit"
             variant="Success"
-            size="400"
+            size={stacked ? '500' : '400'}
             radii="300"
             disabled={loading}
             before={loading && <Spinner size="200" variant="Success" fill="Solid" />}
@@ -117,11 +125,14 @@ type SecretStorageRecoveryKeyProps = {
   processing?: boolean;
   keyContent: SecretStorageKeyContent;
   onDecodedRecoveryKey: (recoveryKey: Uint8Array) => void;
+  // Bottom-sheet layout: large input with a full-width button underneath.
+  stacked?: boolean;
 };
 export function SecretStorageRecoveryKey({
   processing,
   keyContent,
   onDecodedRecoveryKey,
+  stacked,
 }: SecretStorageRecoveryKeyProps) {
   const mx = useMatrixClient();
   const alive = useAlive();
@@ -164,13 +175,17 @@ export function SecretStorageRecoveryKey({
   };
 
   return (
-    <Box as="form" onSubmit={handleSubmit} direction="Column" gap="100">
-      <Box gap="200" alignItems="End">
+    <Box as="form" onSubmit={handleSubmit} direction="Column" gap={stacked ? '300' : '100'}>
+      <Box
+        gap="200"
+        direction={stacked ? 'Column' : 'Row'}
+        alignItems={stacked ? undefined : 'End'}
+      >
         <Box grow="Yes" direction="Column" gap="100">
           <Text size="L400">Recovery Key</Text>
           <PasswordInput
             name="recoveryKeyInput"
-            size="400"
+            size={stacked ? '500' : '400'}
             variant="Secondary"
             radii="300"
             autoFocus
@@ -179,11 +194,11 @@ export function SecretStorageRecoveryKey({
             readOnly={loading}
           />
         </Box>
-        <Box shrink="No" gap="200">
+        <Box shrink="No" gap="200" direction="Column">
           <Button
             type="submit"
             variant="Success"
-            size="400"
+            size={stacked ? '500' : '400'}
             radii="300"
             disabled={loading}
             before={loading && <Spinner size="200" variant="Success" fill="Solid" />}

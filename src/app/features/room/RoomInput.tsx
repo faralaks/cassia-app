@@ -113,6 +113,7 @@ import { CommandAutocomplete } from './CommandAutocomplete';
 import { Command, SHRUG, TABLEFLIP, UNFLIP, useCommands } from '../../hooks/useCommands';
 import { mobileOrTablet } from '../../utils/user-agent';
 import { useElementSizeObserver } from '../../hooks/useElementSizeObserver';
+import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 import { ReplyLayout, ThreadIndicator } from '../../components/message';
 import { roomToParentsAtom } from '../../state/room/roomToParents';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
@@ -143,6 +144,14 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     const mx = useMatrixClient();
     const useAuthentication = useMediaAuthentication();
     const reduceMotion = useReducedMotion();
+    const screenSize = useScreenSizeContext();
+    const mobile = screenSize === ScreenSize.Mobile;
+    // Telegram-style mobile composer: circled outline icon buttons flanking
+    // the rounded text pill (see the Editor `pill` prop). Desktop keeps the
+    // compact square buttons.
+    const composerBtnProps = mobile
+      ? ({ size: '400', radii: 'Pill', outlined: true } as const)
+      : ({ size: '300', radii: '300' } as const);
     const [emojiOpen, setEmojiOpen] = useState(false);
     const [emojiMounted, setEmojiMounted] = useState(false);
     const [emojiTab, setEmojiTab] = useAtom(emojiBoardTabAtom);
@@ -289,7 +298,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       if (!pendingDrop || pendingDrop.roomId !== roomId) return;
       setPendingDrop(null);
       handleFiles(pendingDrop.files);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [roomId, pendingDrop]);
 
     const [hideStickerBtn, setHideStickerBtn] = useState(document.body.clientWidth < 500);
@@ -489,7 +498,17 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       resetEditorHistory(editor);
       setReplyDraft(undefined);
       sendTypingStatus(false);
-    }, [mx, roomId, editor, replyDraft, sendTypingStatus, setReplyDraft, isMarkdown, commands, selectedFiles]);
+    }, [
+      mx,
+      roomId,
+      editor,
+      replyDraft,
+      sendTypingStatus,
+      setReplyDraft,
+      isMarkdown,
+      commands,
+      selectedFiles,
+    ]);
 
     const handleKeyDown: KeyboardEventHandler = useCallback(
       (evt) => {
@@ -668,14 +687,31 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           editableName="RoomInput"
           editor={editor}
           placeholder="Send a message..."
+          pill={mobile}
           style={{
             backgroundColor: color.Background.Container,
             borderRadius: 0,
             boxShadow: 'none',
             borderTop: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
             // Extend the input bar into the iOS home-indicator / gesture area so
-            // the text row sits above it instead of under it.
-            paddingBottom: 'env(safe-area-inset-bottom)',
+            // the text row sits above it instead of under it. Collapses to zero
+            // while the keyboard is open (see --bottom-bar-inset in index.css).
+            paddingBottom: 'var(--bottom-bar-inset, 0px)',
+            ...(mobile
+              ? {
+                  // Telegram-style bar: the chat wallpaper shows through, tinted
+                  // by a theme-colored gradient — solid at the screen bottom,
+                  // fading out toward the bar's top edge, so there is no hard
+                  // line between the bar and the wallpaper.
+                  backgroundColor: 'transparent',
+                  background: `linear-gradient(to top, ${color.Background.Container} 25%, transparent)`,
+                  borderTop: 'none',
+                  // Breathing room so the circled buttons aren't glued to the
+                  // screen edges.
+                  paddingLeft: config.space.S200,
+                  paddingRight: config.space.S200,
+                }
+              : {}),
           }}
           onKeyDown={handleKeyDown}
           onKeyUp={handleKeyUp}
@@ -704,41 +740,41 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 )}
               </AnimatePresence>
               {replyDraft && (
-              <div>
-                <Box
-                  alignItems="Center"
-                  gap="300"
-                  style={{ padding: `${config.space.S200} ${config.space.S300} 0` }}
-                >
-                  <IconButton
-                    onClick={() => setReplyDraft(undefined)}
-                    variant="SurfaceVariant"
-                    size="300"
-                    radii="300"
+                <div>
+                  <Box
+                    alignItems="Center"
+                    gap="300"
+                    style={{ padding: `${config.space.S200} ${config.space.S300} 0` }}
                   >
-                    <Icon src={Icons.Cross} size="50" />
-                  </IconButton>
-                  <Box direction="Row" gap="200" alignItems="Center">
-                    {replyDraft.relation?.rel_type === RelationType.Thread && <ThreadIndicator />}
-                    <ReplyLayout
-                      userColor={replyUsernameColor}
-                      username={
-                        <Text size="T300" truncate>
-                          <b>
-                            {getMemberDisplayName(room, replyDraft.userId) ??
-                              getMxIdLocalPart(replyDraft.userId) ??
-                              replyDraft.userId}
-                          </b>
-                        </Text>
-                      }
+                    <IconButton
+                      onClick={() => setReplyDraft(undefined)}
+                      variant="SurfaceVariant"
+                      size="300"
+                      radii="300"
                     >
-                      <Text size="T300" truncate>
-                        {trimReplyFromBody(replyDraft.body)}
-                      </Text>
-                    </ReplyLayout>
+                      <Icon src={Icons.Cross} size="50" />
+                    </IconButton>
+                    <Box direction="Row" gap="200" alignItems="Center">
+                      {replyDraft.relation?.rel_type === RelationType.Thread && <ThreadIndicator />}
+                      <ReplyLayout
+                        userColor={replyUsernameColor}
+                        username={
+                          <Text size="T300" truncate>
+                            <b>
+                              {getMemberDisplayName(room, replyDraft.userId) ??
+                                getMxIdLocalPart(replyDraft.userId) ??
+                                replyDraft.userId}
+                            </b>
+                          </Text>
+                        }
+                      >
+                        <Text size="T300" truncate>
+                          {trimReplyFromBody(replyDraft.body)}
+                        </Text>
+                      </ReplyLayout>
+                    </Box>
                   </Box>
-                </Box>
-              </div>
+                </div>
               )}
             </>
           }
@@ -748,8 +784,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 onClick={voice.cancel}
                 variant="SurfaceVariant"
                 fill="None"
-                size="300"
-                radii="300"
+                {...composerBtnProps}
                 aria-label="Delete recording"
               >
                 <Icon src={Icons.Delete} />
@@ -759,8 +794,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 onClick={() => pickFile('*')}
                 variant="SurfaceVariant"
                 fill="None"
-                size="300"
-                radii="300"
+                {...composerBtnProps}
               >
                 <Icon src={Icons.PlusCircle} />
               </IconButton>
@@ -772,8 +806,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 onClick={sendVoice}
                 variant="SurfaceVariant"
                 fill="None"
-                size="300"
-                radii="300"
+                {...composerBtnProps}
                 aria-label="Send voice message"
               >
                 <Icon src={Icons.Send} />
@@ -783,89 +816,85 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                 <IconButton
                   variant="SurfaceVariant"
                   fill="None"
-                  size="300"
-                  radii="300"
+                  {...composerBtnProps}
                   onClick={() => setToolbar(!toolbar)}
                 >
-                <Icon src={toolbar ? Icons.AlphabetUnderline : Icons.Alphabet} />
-              </IconButton>
-              <PopOut
-                offset={16}
-                alignOffset={-44}
-                position="Top"
-                align="End"
-                anchor={
-                  emojiMounted
-                    ? emojiBtnRef.current?.getBoundingClientRect() ?? undefined
-                    : undefined
-                }
-                content={
-                  <AnimatePresence onExitComplete={() => setEmojiMounted(false)}>
-                    {emojiOpen && (
-                      <motion.div
-                        key="emoji-board"
-                        {...getPopupMotionProps(reduceMotion)}
-                        style={{ transformOrigin: 'bottom right' }}
-                      >
-                        <EmojiBoard
-                          tab={emojiTab}
-                          onTabChange={setEmojiTab}
-                          imagePackRooms={imagePackRooms}
-                          returnFocusOnDeactivate={false}
-                          onEmojiSelect={handleEmoticonSelect}
-                          onCustomEmojiSelect={handleEmoticonSelect}
-                          onStickerSelect={handleStickerSelect}
-                          requestClose={() => {
-                            setEmojiOpen(false);
-                            if (!mobileOrTablet()) ReactEditor.focus(editor);
-                          }}
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                }
-              >
-                <IconButton
-                  ref={emojiBtnRef}
-                  aria-pressed={emojiOpen}
-                  onClick={() => {
-                    if (emojiOpen) {
-                      setEmojiOpen(false);
-                    } else {
-                      setEmojiMounted(true);
-                      setEmojiOpen(true);
-                    }
-                  }}
-                  variant="SurfaceVariant"
-                  fill="None"
-                  size="300"
-                  radii="300"
-                >
-                  <Icon src={Icons.Smile} filled={emojiOpen} />
+                  <Icon src={toolbar ? Icons.AlphabetUnderline : Icons.Alphabet} />
                 </IconButton>
-              </PopOut>
-              {isEmpty && selectedFiles.length === 0 ? (
-                <IconButton
-                  onClick={() => voice.start()}
-                  variant="SurfaceVariant"
-                  fill="None"
-                  size="300"
-                  radii="300"
-                  aria-label="Record voice message"
+                <PopOut
+                  offset={16}
+                  alignOffset={-44}
+                  position="Top"
+                  align="End"
+                  anchor={
+                    emojiMounted
+                      ? emojiBtnRef.current?.getBoundingClientRect() ?? undefined
+                      : undefined
+                  }
+                  content={
+                    <AnimatePresence onExitComplete={() => setEmojiMounted(false)}>
+                      {emojiOpen && (
+                        <motion.div
+                          key="emoji-board"
+                          {...getPopupMotionProps(reduceMotion)}
+                          style={{ transformOrigin: 'bottom right' }}
+                        >
+                          <EmojiBoard
+                            tab={emojiTab}
+                            onTabChange={setEmojiTab}
+                            imagePackRooms={imagePackRooms}
+                            returnFocusOnDeactivate={false}
+                            onEmojiSelect={handleEmoticonSelect}
+                            onCustomEmojiSelect={handleEmoticonSelect}
+                            onStickerSelect={handleStickerSelect}
+                            requestClose={() => {
+                              setEmojiOpen(false);
+                              if (!mobileOrTablet()) ReactEditor.focus(editor);
+                            }}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  }
                 >
-                  <Icon src={Icons.Mic} />
-                </IconButton>
-              ) : (
-                <IconButton
-                  onClick={submit}
-                  variant="SurfaceVariant"
-                  fill="None"
-                  size="300"
-                  radii="300"
-                >
-                  <Icon src={Icons.Send} />
-                </IconButton>
-              )}
+                  <IconButton
+                    ref={emojiBtnRef}
+                    aria-pressed={emojiOpen}
+                    onClick={() => {
+                      if (emojiOpen) {
+                        setEmojiOpen(false);
+                      } else {
+                        setEmojiMounted(true);
+                        setEmojiOpen(true);
+                      }
+                    }}
+                    variant="SurfaceVariant"
+                    fill="None"
+                    {...composerBtnProps}
+                  >
+                    <Icon src={Icons.Smile} filled={emojiOpen} />
+                  </IconButton>
+                </PopOut>
+                {isEmpty && selectedFiles.length === 0 ? (
+                  <IconButton
+                    onClick={() => voice.start()}
+                    variant="SurfaceVariant"
+                    fill="None"
+                    {...composerBtnProps}
+                    aria-label="Record voice message"
+                  >
+                    <Icon src={Icons.Mic} />
+                  </IconButton>
+                ) : (
+                  <IconButton
+                    onClick={submit}
+                    variant="SurfaceVariant"
+                    fill="None"
+                    {...composerBtnProps}
+                  >
+                    <Icon src={Icons.Send} />
+                  </IconButton>
+                )}
               </>
             )
           }

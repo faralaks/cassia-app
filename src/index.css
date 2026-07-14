@@ -41,18 +41,46 @@
 html {
   height: 100%;
   overflow: hidden;
+  /*
+   * The <html> canvas shows wherever the app doesn't paint: the safe-area
+   * strip around the Dynamic Island, and the band the iOS keyboard + its
+   * accessory bar float over. Default it to the theme background per system
+   * scheme so those regions are never white; ThemeManager overrides it with
+   * the exact active-theme color at runtime. Values mirror Background.Container
+   * of folds lightTheme (#F2F2F2) and darkTheme (#1A1A1A, src/colors.css.ts).
+   */
+  background-color: #f2f2f2;
+}
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #1a1a1a;
+  }
 }
 
 /*
- * Lock the page itself: it must never scroll or rubber-band — only inner UI
- * (timeline, lists, settings) scrolls. overflow:hidden + overscroll-behavior
- * is enough to stop page scroll without position:fixed on body, which on iOS
- * makes a bottom composer float mid-screen when the keyboard opens.
+ * Lock the page to the viewport: it must never scroll or rubber-band. The
+ * JS touchmove guard (setupViewportHeight) blocks page dragging while still
+ * allowing inner scrollers, so position:fixed here is safe and keeps the app
+ * anchored when the iOS keyboard opens.
  */
 html,
 body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+}
+
+/*
+ * Inner scrollers (folds <Scroll> sets these data attrs at runtime) get native
+ * momentum + an elastic bounce when they overflow, contained so the bounce
+ * never chains up to the locked page.
+ */
+[data-y-scrollbar-width],
+[data-x-scrollbar-width] {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 body {
@@ -68,9 +96,11 @@ body {
   font-variant-ligatures: no-contextual;
 }
 /*
- * #root height tracks --app-height when set by the VisualViewport handler
- * (keyboard open), falling back to the dynamic viewport. This keeps the bottom
- * composer above the iOS keyboard instead of behind it.
+ * #root height tracks --app-height (set by setupViewportHeight): the full
+ * layout viewport normally, the keyboard-clipped visual viewport while the
+ * iOS keyboard is open — the content area gives up space and the composer
+ * rides up. The page itself stays fixed; it never scrolls. Falls back to the
+ * dynamic viewport when unavailable.
  */
 #root {
   width: 100%;
@@ -79,6 +109,40 @@ body {
   height: var(--app-height, 100dvh);
   display: flex;
   flex-direction: column;
+  /*
+   * With viewport-fit=cover + black-translucent the app draws under the iOS
+   * status bar / Dynamic Island (and the side notches in landscape). Inset the
+   * app column by the safe areas; the exposed strip shows the themed <html>
+   * background (painted by ThemeManager), so it follows the active theme
+   * instead of staying white. Bottom insets are handled per-component
+   * (BottomNav, RoomInput) so they can put background behind the home bar.
+   */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/*
+ * Bottom inset for bars sitting on the screen's bottom edge (composer, bottom
+ * nav). A fixed value on touch phones: env(safe-area-inset-bottom) reads 0
+ * without viewport-fit=cover, and viewport-fit=cover must NOT be used — it
+ * triggers the iOS 26.x web-app letterbox bug. 16px is calibrated against
+ * Telegram iOS: their composer text ends ~32-40pt above the screen bottom;
+ * ours lands ~37px with the editor's internal padding on top of this inset.
+ * Zero while the keyboard is open (data-keyboard, set by setupViewportHeight):
+ * the keyboard covers the home-indicator area, so any remaining inset would
+ * show as an empty strip above the keyboard.
+ */
+:root {
+  --bottom-bar-inset: 0px;
+}
+@media (pointer: coarse) and (max-width: 750px) {
+  :root {
+    --bottom-bar-inset: 16px;
+  }
+}
+html[data-keyboard] {
+  --bottom-bar-inset: 0px;
 }
 
 *,
@@ -87,6 +151,36 @@ body {
   box-sizing: border-box;
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
   -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * Native-feel touch behavior. Taps should not double-tap-zoom (also removes the
+ * residual tap delay). Default text stays selectable so message text can be
+ * copied — we only disable selection/callout on interactive chrome below.
+ */
+body {
+  touch-action: manipulation;
+}
+
+/* Interactive chrome should not be text-selectable or show the iOS long-press
+   callout — that reads as "this is a web page". Buttons/links/nav only; this
+   deliberately does NOT cover message text or inputs. */
+button,
+a,
+[role='button'],
+[role='switch'],
+[role='tab'],
+label {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Avoid sticky focus rings left after a tap; keep them for keyboard users. */
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+[role='button']:focus:not(:focus-visible) {
+  outline: none;
 }
 a {
   color: var(--tc-link);
@@ -170,5 +264,89 @@ button[role='switch'] > span {
   button[role='switch'],
   button[role='switch'] > span {
     transition: none;
+  }
+}
+
+/* Reduced motion: keep tap feedback as a colour change only, no scale. */
+@media (prefers-reduced-motion: reduce) {
+  *:active {
+    transform: none !important;
+  }
+}
+
+/*
+ * Mobile screen slide transitions (View Transitions API). Only active when
+ * <html data-vt-mobile> is set (the app is in mobile mode and the browser
+ * supports view transitions). Direction comes from data-vt: "forward" slides
+ * the new screen in from the right, "back" slides it out to the right.
+ * Unsupported browsers ignore all of this and navigate instantly.
+ */
+html[data-vt-mobile]::view-transition-group(root) {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Forward: old screen drifts slightly left, new screen slides in from the right. */
+html[data-vt-mobile][data-vt='forward']::view-transition-old(root) {
+  animation: vt-slide-out-left 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+html[data-vt-mobile][data-vt='forward']::view-transition-new(root) {
+  animation: vt-slide-in-right 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Back: old screen slides out to the right, new screen comes from the left. */
+html[data-vt-mobile][data-vt='back']::view-transition-old(root) {
+  animation: vt-slide-out-right 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+html[data-vt-mobile][data-vt='back']::view-transition-new(root) {
+  animation: vt-slide-in-left 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Fade: peer tab switches (no clear forward/back), a quick cross-fade. */
+html[data-vt-mobile][data-vt='fade']::view-transition-old(root) {
+  animation: vt-fade-out 180ms ease both;
+}
+html[data-vt-mobile][data-vt='fade']::view-transition-new(root) {
+  animation: vt-fade-in 180ms ease both;
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes vt-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes vt-slide-out-left {
+  to {
+    transform: translateX(-25%);
+    opacity: 0.6;
+  }
+}
+@keyframes vt-slide-in-left {
+  from {
+    transform: translateX(-25%);
+    opacity: 0.6;
+  }
+}
+@keyframes vt-slide-out-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* No view-transition animation when the user prefers reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-vt-mobile]::view-transition-old(root),
+  html[data-vt-mobile]::view-transition-new(root) {
+    animation: none !important;
   }
 }

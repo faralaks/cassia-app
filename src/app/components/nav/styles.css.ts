@@ -58,6 +58,8 @@ const NavItemBase = style({
   minHeight: toRem(36),
   userSelect: 'none',
   WebkitUserSelect: 'none',
+  // Subtle press feedback so a tap feels acknowledged on touch devices.
+  transition: 'transform 120ms ease, background-color 120ms ease',
 
   selectors: {
     '&:hover, &:focus-visible': {
@@ -68,6 +70,7 @@ const NavItemBase = style({
     },
     [`&:has(.${NavLink}:active)`]: {
       backgroundColor: ContainerActive,
+      transform: 'scale(0.985)',
     },
     '&[aria-selected=true]': {
       backgroundColor: ContainerActive,

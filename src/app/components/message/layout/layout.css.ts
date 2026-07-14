@@ -77,6 +77,17 @@ export const MessageBase = recipe({
       marginTop: SpacingVar,
       padding: `${config.space.S100} ${config.space.S200} ${config.space.S100} ${config.space.S400}`,
       borderRadius: `0 ${config.radii.R400} ${config.radii.R400} 0`,
+
+      '@media': {
+        // On phones bubbles hug their own edge with a symmetric 8px inset —
+        // exactly the width of the bottom-corner tails (message/styles.css.ts),
+        // so on the last message of a group the tail tip touches the screen
+        // edge instead of overflowing the scroller.
+        [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
+          paddingLeft: toRem(8),
+          paddingRight: toRem(8),
+        },
+      },
     },
   ],
   variants: {
@@ -143,9 +154,16 @@ export const BubbleContent = style({
   '@media': {
     // On phones cap the bubble at 75% of the row so it never spans the screen,
     // and shrink the message text a touch so long messages fit comfortably.
+    // Also disable text selection / the iOS long-press callout so a tap-and-hold
+    // opens the message menu instead of starting a selection.
     [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
-      maxWidth: '75vw',
+      // With the avatar gutter gone the row has the full width — cap a bit
+      // higher so bubbles can use it (Telegram sits around ~80%).
+      maxWidth: '80vw',
       fontSize: toRem(14),
+      WebkitTouchCallout: 'none',
+      WebkitUserSelect: 'none',
+      userSelect: 'none',
     },
   },
 });
@@ -170,6 +188,14 @@ export const BubbleContentOwn = style([
     backgroundColor: `var(--bubble-outgoing-bg, rgba(70, 90, 180, 0.85))`,
     color: `var(--bubble-outgoing-text, #ffffff)`,
     borderTopRightRadius: 0,
+
+    '@media': {
+      // No tail on mobile (it would overhang the hairline edge inset) — keep
+      // the corner rounded like the rest of the bubble.
+      [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
+        borderTopRightRadius: `var(--bubble-radius, ${config.radii.R500})`,
+      },
+    },
   },
 ]);
 
@@ -181,10 +207,55 @@ export const BubbleRightArrow = style({
   top: 0,
   right: toRem(-8),
   zIndex: 1,
+
+  '@media': {
+    [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
+      display: 'none',
+    },
+  },
+});
+
+/*
+ * Mobile bottom-corner tails (Telegram-style curved sweep), one per bubble.
+ * The svg is 10px wide, offset -8px: 2px tuck UNDER the bubble edge so no
+ * antialiasing seam shows between tail and bubble, 8px outside — exactly the
+ * row's side inset, so the tip lands on the screen edge without overflowing
+ * the scroller.
+ */
+export const BubbleBottomTailOwn = style({
+  position: 'absolute',
+  bottom: 0,
+  right: toRem(-8),
+  width: toRem(10),
+  height: toRem(13),
+  pointerEvents: 'none',
+});
+
+export const BubbleBottomTailIn = style({
+  position: 'absolute',
+  bottom: 0,
+  left: toRem(-8),
+  width: toRem(10),
+  height: toRem(13),
+  pointerEvents: 'none',
 });
 
 globalStyle(`[data-selected="true"] .${BubbleContent}`, {
   filter: 'brightness(1.5)',
+});
+
+// On phones a long-press should only open the message menu — never start a text
+// selection. Force selection/callout off on the whole bubble subtree (the
+// rendered message HTML would otherwise re-enable it). Desktop keeps text
+// selectable for copy.
+globalStyle(`.${BubbleContent}, .${BubbleContent} *`, {
+  '@media': {
+    [`screen and (max-width: ${MOBILE_BREAKPOINT}px)`]: {
+      WebkitUserSelect: 'none',
+      userSelect: 'none',
+      WebkitTouchCallout: 'none',
+    },
+  },
 });
 
 export const Username = style({

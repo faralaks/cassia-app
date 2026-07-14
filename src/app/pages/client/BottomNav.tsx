@@ -1,5 +1,4 @@
 import React, { ReactNode, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Avatar, Icon, Icons, Text, toRem } from 'folds';
 import { useAtomValue } from 'jotai';
 
@@ -17,6 +16,7 @@ import { useClientConfig } from '../../hooks/useClientConfig';
 import { useHomeSelected } from '../../hooks/router/useHomeSelected';
 import { useDirectSelected } from '../../hooks/router/useDirectSelected';
 import { useExploreSelected } from '../../hooks/router/useExploreSelected';
+import { useMobileViewTransitionNavigate } from '../../hooks/useMobileViewTransition';
 import {
   getDirectPath,
   getExploreFeaturedPath,
@@ -58,7 +58,7 @@ function BottomNavItem({ label, active, icon, badge, onClick }: BottomNavItemPro
 
 function HomeNavItem() {
   const mx = useMatrixClient();
-  const navigate = useNavigate();
+  const navigate = useMobileViewTransitionNavigate();
   const mDirects = useAtomValue(mDirectAtom);
   const roomToParents = useAtomValue(roomToParentsAtom);
   const orphanRooms = useOrphanRooms(mx, allRoomsAtom, mDirects, roomToParents);
@@ -73,14 +73,14 @@ function HomeNavItem() {
       badge={
         homeUnread && <UnreadBadge highlight={homeUnread.highlight > 0} count={homeUnread.total} />
       }
-      onClick={() => navigate(getHomePath())}
+      onClick={() => navigate(getHomePath(), 'fade')}
     />
   );
 }
 
 function DirectNavItem() {
   const mx = useMatrixClient();
-  const navigate = useNavigate();
+  const navigate = useMobileViewTransitionNavigate();
   const mDirects = useAtomValue(mDirectAtom);
   const directs = useDirects(mx, allRoomsAtom, mDirects);
   const directUnread = useRoomsUnread(directs, roomToUnreadAtom);
@@ -96,25 +96,25 @@ function DirectNavItem() {
           <UnreadBadge highlight={directUnread.highlight > 0} count={directUnread.total} />
         )
       }
-      onClick={() => navigate(getDirectPath())}
+      onClick={() => navigate(getDirectPath(), 'fade')}
     />
   );
 }
 
 function ExploreNavItem() {
   const mx = useMatrixClient();
-  const navigate = useNavigate();
+  const navigate = useMobileViewTransitionNavigate();
   const clientConfig = useClientConfig();
   const selected = useExploreSelected();
 
   const handleClick = () => {
     if (clientConfig.featuredCommunities?.openAsDefault) {
-      navigate(getExploreFeaturedPath());
+      navigate(getExploreFeaturedPath(), 'fade');
       return;
     }
     const userId = mx.getUserId();
     const userServer = userId ? getMxIdServer(userId) : undefined;
-    navigate(userServer ? getExploreServerPath(userServer) : getExplorePath());
+    navigate(userServer ? getExploreServerPath(userServer) : getExplorePath(), 'fade');
   };
 
   return (
@@ -165,10 +165,12 @@ function SettingsNavItem() {
 export function BottomNav() {
   return (
     <nav className={css.BottomNav}>
-      <HomeNavItem />
-      <DirectNavItem />
-      <ExploreNavItem />
-      <SettingsNavItem />
+      <div className={css.BottomNavPill}>
+        <HomeNavItem />
+        <DirectNavItem />
+        <ExploreNavItem />
+        <SettingsNavItem />
+      </div>
     </nav>
   );
 }

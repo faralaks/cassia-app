@@ -1,7 +1,34 @@
 /// <reference lib="WebWorker" />
+import {
+  cleanupOutdatedCaches,
+  createHandlerBoundToURL,
+  precacheAndRoute,
+} from 'workbox-precaching';
+import { NavigationRoute, registerRoute } from 'workbox-routing';
 
 export type {};
-declare const self: ServiceWorkerGlobalScope;
+declare const self: ServiceWorkerGlobalScope & {
+  __WB_MANIFEST: Parameters<typeof precacheAndRoute>[0];
+};
+
+/**
+ * App-shell precache: vite-plugin-pwa injects the built asset list into
+ * __WB_MANIFEST (see injectManifest in vite.config.js) so an installed PWA
+ * launches instantly and works offline. SPA navigations are served the cached
+ * index.html. In dev the manifest is empty — everything falls through to the
+ * network and only the media handler below is active.
+ */
+const precacheEntries = self.__WB_MANIFEST || [];
+precacheAndRoute(precacheEntries);
+cleanupOutdatedCaches();
+if (precacheEntries.length > 0) {
+  registerRoute(
+    new NavigationRoute(createHandlerBoundToURL('index.html'), {
+      // Real files that must never be answered with the SPA shell.
+      denylist: [/\/public\//, /\/config\.json$/, /\/manifest\.json$/, /\/pdf\.worker\.min\.js$/],
+    })
+  );
+}
 
 type SessionInfo = {
   accessToken: string;
@@ -77,7 +104,14 @@ async function requestSessionWithTimeout(
 }
 
 self.addEventListener('install', () => {
-  self.skipWaiting();
+  // First install only: activate immediately (nothing old to break, and the
+  // media-auth fetch handler should start working right away). On updates,
+  // stay waiting until every window closes — the running page lazy-loads
+  // chunks from the precache it booted with, and yanking that mid-session
+  // (skipWaiting + cleanupOutdatedCaches) made dynamic imports hit dead
+  // hashed URLs on the server, which answers with the SPA index.html
+  // ("'text/html' is not a valid JavaScript MIME type" on login/route load).
+  if (!self.registration.active) self.skipWaiting();
 });
 
 self.addEventListener('activate', (event: ExtendableEvent) => {
@@ -101,6 +135,13 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
   if (type === 'setSession') {
     setSession(client.id, accessToken, baseUrl);
     cleanupDeadClients();
+  }
+
+  // Page-driven update activation (see index.tsx): lets a freshly loaded page
+  // promote a waiting update immediately instead of waiting for all windows
+  // to close.
+  if (type === 'skipWaiting') {
+    self.skipWaiting();
   }
 });
 

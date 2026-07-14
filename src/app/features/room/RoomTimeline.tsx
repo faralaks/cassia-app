@@ -74,8 +74,21 @@ import {
   makeMentionCustomProps,
   renderMatrixMention,
 } from '../../plugins/react-custom-html-parser';
-import { canEditEvent, decryptAllTimelineEvent, getEditedEvent, getEventEdits, getEventReactions, getLatestEditableEvt, getMemberDisplayName, getReactionContent, getStateEvent, isMembershipChanged, reactionOrEditEvent } from '../../utils/room';
+import {
+  canEditEvent,
+  decryptAllTimelineEvent,
+  getEditedEvent,
+  getEventEdits,
+  getEventReactions,
+  getLatestEditableEvt,
+  getMemberDisplayName,
+  getReactionContent,
+  getStateEvent,
+  isMembershipChanged,
+  reactionOrEditEvent,
+} from '../../utils/room';
 import { useSetting } from '../../state/hooks/settings';
+import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 import { MessageLayout, settingsAtom } from '../../state/settings';
 import { useMatrixEventRenderer } from '../../hooks/useMatrixEventRenderer';
 import { Reactions, Message, Event, EncryptedContent } from './message';
@@ -458,6 +471,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
   const [messageLayout] = useSetting(settingsAtom, 'messageLayout');
   const [messageSpacing] = useSetting(settingsAtom, 'messageSpacing');
+  const screenSize = useScreenSizeContext();
   const [legacyUsernameColor] = useSetting(settingsAtom, 'legacyUsernameColor');
   const direct = useIsDirectRoom();
   const [hideMembershipEvents] = useSetting(settingsAtom, 'hideMembershipEvents');
@@ -596,13 +610,17 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       count: eventsLength,
       limit: PAGINATION_LIMIT,
       range: timeline.range,
-      onRangeChange: useCallback((r) => setTimeline((cs) => {
-        if (r.end > cs.range.end && atBottomRef.current) {
-          scrollToBottomRef.current.count += 1;
-          scrollToBottomRef.current.smooth = false;
-        }
-        return { ...cs, range: r };
-      }), []),
+      onRangeChange: useCallback(
+        (r) =>
+          setTimeline((cs) => {
+            if (r.end > cs.range.end && atBottomRef.current) {
+              scrollToBottomRef.current.count += 1;
+              scrollToBottomRef.current.smooth = false;
+            }
+            return { ...cs, range: r };
+          }),
+        []
+      ),
       getScrollElement,
       getItemElement: useCallback(
         (index: number) =>
@@ -678,7 +696,10 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         if (atBottomRef.current) {
           const arrivedId = mEvt.getId();
           if (arrivedId) animatedIdsRef.current.add(arrivedId);
-          if (document.visibilityState !== 'hidden' && (!unreadInfo || mEvt.getSender() === mx.getUserId())) {
+          if (
+            document.visibilityState !== 'hidden' &&
+            (!unreadInfo || mEvt.getSender() === mx.getUserId())
+          ) {
             // Check if the document is in focus (user is actively viewing the app),
             // and either there are no unread messages or the latest message is from the current user.
             // If either condition is met, trigger the markAsRead function to send a read receipt.
@@ -896,7 +917,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     return () => {
       markAsRead(mx, room.roomId, hideActivity);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mx, room.roomId]);
 
   // Handle up arrow edit
@@ -956,6 +977,45 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     return () => scrollEl.removeEventListener('wheel', onWheel);
   }, []);
 
+  // Native chat behavior: a quick downward flick on the timeline dismisses
+  // the keyboard. Deliberately velocity-gated — slow scrolling through
+  // history must NOT close it, only a fast top-to-bottom impulse (like
+  // flicking toward the keyboard in native chat apps). Touch-only; desktop
+  // is untouched.
+  useEffect(() => {
+    const scrollEl = scrollRef.current;
+    if (!scrollEl) return undefined;
+    let start: { y: number; t: number } | null = null;
+    const onTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      start = touch ? { y: touch.clientY, t: performance.now() } : null;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!start) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const dy = touch.clientY - start.y;
+      const dt = Math.max(performance.now() - start.t, 1);
+      // ≥48px downward at ≥0.5px/ms — a flick, not a browse-scroll.
+      if (dy < 48 || dy / dt < 0.5) return;
+      start = null;
+      const active = document.activeElement;
+      if (!active || scrollEl.contains(active)) return;
+      if (
+        active instanceof HTMLElement &&
+        (active.isContentEditable || active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')
+      ) {
+        active.blur();
+      }
+    };
+    scrollEl.addEventListener('touchstart', onTouchStart, { passive: true });
+    scrollEl.addEventListener('touchmove', onTouchMove, { passive: true });
+    return () => {
+      scrollEl.removeEventListener('touchstart', onTouchStart);
+      scrollEl.removeEventListener('touchmove', onTouchMove);
+    };
+  }, []);
+
   // Scroll to bottom on initial timeline load
   useLayoutEffect(() => {
     const scrollEl = scrollRef.current;
@@ -973,7 +1033,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       }
     });
     return () => cancelAnimationFrame(frame);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // if live timeline is linked and unreadInfo change
@@ -1297,7 +1357,14 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
           </Message>
         );
       },
-      [MessageEvent.RoomMessageEncrypted]: (mEventId, mEvent, item, timelineSet, collapse, groupId) => {
+      [MessageEvent.RoomMessageEncrypted]: (
+        mEventId,
+        mEvent,
+        item,
+        timelineSet,
+        collapse,
+        groupId
+      ) => {
         const reactionRelations = getEventReactions(timelineSet, mEventId);
         const reactions = reactionRelations && reactionRelations.getSortedAnnotationsByKey();
         const hasReactions = reactions && reactions.length > 0;
@@ -1722,7 +1789,15 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                       type="button"
                       data-user-id={senderId}
                       onClick={handleUserClick}
-                      style={{ fontWeight: 'bold', background: 'none', border: 'none', padding: 0, margin: 0, color: 'inherit', font: 'inherit' }}
+                      style={{
+                        fontWeight: 'bold',
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        margin: 0,
+                        color: 'inherit',
+                        font: 'inherit',
+                      }}
                     >
                       {senderName}
                     </Username>
@@ -1794,7 +1869,15 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                       type="button"
                       data-user-id={senderId}
                       onClick={handleUserClick}
-                      style={{ fontWeight: 'bold', background: 'none', border: 'none', padding: 0, margin: 0, color: 'inherit', font: 'inherit' }}
+                      style={{
+                        fontWeight: 'bold',
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        margin: 0,
+                        color: 'inherit',
+                        font: 'inherit',
+                      }}
                     >
                       {senderName}
                     </Username>
@@ -1969,41 +2052,63 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     isPrevRendered = !!eventJSX;
 
     const newDividerContent = (
-    <MessageBase space={messageSpacing}>
-    <TimelineDivider style={{ color: color.Secondary.Main }} variant="Inherit">
-    <Badge as="span" size="500" variant="Secondary" fill="Soft" radii="300"
-      style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', borderRadius: toRem(bubbleRadius) }}>
-    <Text size="L400" style={{ userSelect: 'text' }}>New Messages</Text>
-    </Badge>
-    </TimelineDivider>
-    </MessageBase>
+      <MessageBase space={messageSpacing}>
+        <TimelineDivider style={{ color: color.Secondary.Main }} variant="Inherit">
+          <Badge
+            as="span"
+            size="500"
+            variant="Secondary"
+            fill="Soft"
+            radii="300"
+            style={{
+              backgroundColor: 'rgba(0,0,0,0.45)',
+              backdropFilter: 'blur(4px)',
+              borderRadius: toRem(bubbleRadius),
+            }}
+          >
+            <Text size="L400" style={{ userSelect: 'text' }}>
+              New Messages
+            </Text>
+          </Badge>
+        </TimelineDivider>
+      </MessageBase>
     );
     const newDividerJSX =
-    newDivider && eventJSX && eventSender !== mx.getUserId() ? (
-      dividerExiting ? (
-        <motion.div
-          initial={{ height: 'auto', opacity: 1 }}
-          animate={{ height: 0, opacity: 0 }}
-          transition={{ duration: reduceMotion ? 0 : 0.12, ease: 'easeOut' }}
-          style={{ overflow: 'hidden' }}
-          onUpdate={() => {
-            if (atBottomRef.current && scrollRef.current) scrollToBottom(scrollRef.current);
-          }}
-          onAnimationComplete={finalizeDividerDismiss}
-        >
-          {newDividerContent}
-        </motion.div>
-      ) : (
-        newDividerContent
-      )
-    ) : null;
+      newDivider && eventJSX && eventSender !== mx.getUserId() ? (
+        dividerExiting ? (
+          <motion.div
+            initial={{ height: 'auto', opacity: 1 }}
+            animate={{ height: 0, opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.12, ease: 'easeOut' }}
+            style={{ overflow: 'hidden' }}
+            onUpdate={() => {
+              if (atBottomRef.current && scrollRef.current) scrollToBottom(scrollRef.current);
+            }}
+            onAnimationComplete={finalizeDividerDismiss}
+          >
+            {newDividerContent}
+          </motion.div>
+        ) : (
+          newDividerContent
+        )
+      ) : null;
 
     const dayDividerJSX =
       dayDivider && eventJSX ? (
         <MessageBase space={messageSpacing}>
           <TimelineDivider variant="Surface">
-            <Badge as="span" size="500" variant="Secondary" fill="None" radii="300"
-              style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', borderRadius: toRem(bubbleRadius) }}>
+            <Badge
+              as="span"
+              size="500"
+              variant="Secondary"
+              fill="None"
+              radii="300"
+              style={{
+                backgroundColor: 'rgba(0,0,0,0.45)',
+                backdropFilter: 'blur(4px)',
+                borderRadius: toRem(bubbleRadius),
+              }}
+            >
               <Text size="L400" style={{ userSelect: 'text', color: '#ffffff' }}>
                 {(() => {
                   if (today(mEvent.getTs())) return 'Today';
@@ -2027,7 +2132,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
           {eventJSX}
         </React.Fragment>
       );
-      return (!!mEventId && animatedIdsRef.current.has(mEventId)) ? (
+      return !!mEventId && animatedIdsRef.current.has(mEventId) ? (
         <motion.div
           key={mEventId}
           initial={reduceMotion ? false : { height: 0, opacity: 0 }}
@@ -2049,7 +2154,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       );
     }
 
-    return (!!mEventId && animatedIdsRef.current.has(mEventId)) && eventJSX ? (
+    return !!mEventId && animatedIdsRef.current.has(mEventId) && eventJSX ? (
       <motion.div
         key={mEventId}
         initial={reduceMotion ? false : { height: 0, opacity: 0 }}
@@ -2066,183 +2171,199 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       >
         {eventJSX}
       </motion.div>
-    ) : eventJSX;
+    ) : (
+      eventJSX
+    );
   };
 
   return (
     <VoiceMessageQueueProvider>
       <Box grow="Yes" style={{ position: 'relative', userSelect: 'none' }}>
-      {unreadInfo?.readUptoEventId && !unreadInfo?.inLiveTimeline && (
-        <TimelineFloat position="Top">
-          <Chip
-            variant="Primary"
-            radii="Pill"
-            outlined
-            before={<Icon size="50" src={Icons.MessageUnread} />}
-            onClick={handleJumpToUnread}
-          >
-            <Text size="L400">Jump to Unread</Text>
-          </Chip>
+        {unreadInfo?.readUptoEventId && !unreadInfo?.inLiveTimeline && (
+          <TimelineFloat position="Top">
+            <Chip
+              variant="Primary"
+              radii="Pill"
+              outlined
+              before={<Icon size="50" src={Icons.MessageUnread} />}
+              onClick={handleJumpToUnread}
+            >
+              <Text size="L400">Jump to Unread</Text>
+            </Chip>
 
-          <Chip
-            variant="SurfaceVariant"
-            radii="Pill"
-            outlined
-            before={<Icon size="50" src={Icons.CheckTwice} />}
-            onClick={handleMarkAsRead}
-          >
-            <Text size="L400">Mark as Read</Text>
-          </Chip>
-        </TimelineFloat>
-      )}
-      <Scroll ref={scrollRef} visibility="Hover">
-        <Box
-          ref={contentRef}
-          direction="Column"
-          justifyContent="End"
-          style={{
-            minHeight: viewportHeight ? `${viewportHeight}px` : '100%',
-            paddingTop: config.space.S600,
-            paddingBottom: config.space.S300,
-          }}
-        >
-          {!canPaginateBack && rangeAtStart && getItems().length > 0 && (() => {
-            const createEvent = getStateEvent(room, StateEvent.RoomCreate);
-            const creatorId = createEvent?.getSender();
-            const creatorName =
-              creatorId && (getMemberDisplayName(room, creatorId) ?? getMxIdLocalPart(creatorId));
-            const ts = createEvent?.getTs();
-            const timeJSX = ts && (
-              <Time
-                ts={ts}
-                compact={messageLayout === MessageLayout.Compact}
-                hour24Clock={hour24Clock}
-                dateFormatString={dateFormatString}
-              />
-            );
-            return (
-              <MessageBase space={messageSpacing}>
-                <EventContent
-                  messageLayout={messageLayout}
-                  time={timeJSX}
-                  iconSrc={Icons.Hash}
-                  bubbleRadius={bubbleRadius}
-                  content={
-                    <Box grow="Yes" direction="Column">
-                      <Text size="T300" priority="300">
-                        {creatorName ? (
-                          <>
-                            <b>{creatorName}</b>
-                            {' created the room'}
-                          </>
-                        ) : (
-                          'This is the beginning of the conversation'
-                        )}
-                      </Text>
-                    </Box>
-                  }
-                />
-              </MessageBase>
-            );
-          })()}
-          {(canPaginateBack || !rangeAtStart) &&
-            (messageLayout === MessageLayout.Compact ? (
-              <>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase ref={observeBackAnchor}>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-              </>
-            ) : (
-              <>
-                <MessageBase>
-                  <DefaultPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <DefaultPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase ref={observeBackAnchor}>
-                  <DefaultPlaceholder key={getItems().length} />
-                </MessageBase>
-              </>
-            ))}
-
-          {getItems().map(eventRenderer)}
-
-          {(!liveTimelineLinked || !rangeAtEnd) &&
-            (messageLayout === MessageLayout.Compact ? (
-              <>
-                <MessageBase ref={observeFrontAnchor}>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-              </>
-            ) : (
-              <>
-                <MessageBase ref={observeFrontAnchor}>
-                  <DefaultPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <DefaultPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <DefaultPlaceholder key={getItems().length} />
-                </MessageBase>
-              </>
-            ))}
-          <span ref={atBottomAnchorRef} />
-        </Box>
-      </Scroll>
-      <AnimatePresence>
-        {!atBottom && (
-          <motion.div
-            key="jump-to-latest"
-            initial={{ opacity: 0, x: '-50%', y: reduceMotion ? 0 : 8 }}
-            animate={{ opacity: 1, x: '-50%', y: 0 }}
-            exit={{ opacity: 0, x: '-50%', y: reduceMotion ? 0 : 8 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            style={{
-              position: 'absolute',
-              left: '50%',
-              bottom: config.space.S400,
-              zIndex: 1,
-              minWidth: 'max-content',
-            }}
-          >
             <Chip
               variant="SurfaceVariant"
               radii="Pill"
               outlined
-              before={<Icon size="50" src={Icons.ArrowBottom} />}
-              onClick={handleJumpToLatest}
+              before={<Icon size="50" src={Icons.CheckTwice} />}
+              onClick={handleMarkAsRead}
             >
-              <Text size="L400">Jump to Latest</Text>
+              <Text size="L400">Mark as Read</Text>
             </Chip>
-          </motion.div>
+          </TimelineFloat>
         )}
-      </AnimatePresence>
+        <Scroll
+          ref={scrollRef}
+          visibility="Hover"
+          // On phones the styled webkit scrollbar becomes a classic
+          // space-consuming one, insetting the whole timeline from the right
+          // edge (outgoing bubbles couldn't reach it). Hide it — touch
+          // scrolling needs no track.
+          size={screenSize === ScreenSize.Mobile ? '0' : undefined}
+        >
+          <Box
+            ref={contentRef}
+            direction="Column"
+            justifyContent="End"
+            style={{
+              // +1px so the timeline is always marginally scrollable → native
+              // iOS bounce even when messages don't fill the screen.
+              minHeight: viewportHeight ? `${viewportHeight + 1}px` : 'calc(100% + 1px)',
+              paddingTop: config.space.S600,
+              paddingBottom: config.space.S300,
+            }}
+          >
+            {!canPaginateBack &&
+              rangeAtStart &&
+              getItems().length > 0 &&
+              (() => {
+                const createEvent = getStateEvent(room, StateEvent.RoomCreate);
+                const creatorId = createEvent?.getSender();
+                const creatorName =
+                  creatorId &&
+                  (getMemberDisplayName(room, creatorId) ?? getMxIdLocalPart(creatorId));
+                const ts = createEvent?.getTs();
+                const timeJSX = ts && (
+                  <Time
+                    ts={ts}
+                    compact={messageLayout === MessageLayout.Compact}
+                    hour24Clock={hour24Clock}
+                    dateFormatString={dateFormatString}
+                  />
+                );
+                return (
+                  <MessageBase space={messageSpacing}>
+                    <EventContent
+                      messageLayout={messageLayout}
+                      time={timeJSX}
+                      iconSrc={Icons.Hash}
+                      bubbleRadius={bubbleRadius}
+                      content={
+                        <Box grow="Yes" direction="Column">
+                          <Text size="T300" priority="300">
+                            {creatorName ? (
+                              <>
+                                <b>{creatorName}</b>
+                                {' created the room'}
+                              </>
+                            ) : (
+                              'This is the beginning of the conversation'
+                            )}
+                          </Text>
+                        </Box>
+                      }
+                    />
+                  </MessageBase>
+                );
+              })()}
+            {(canPaginateBack || !rangeAtStart) &&
+              (messageLayout === MessageLayout.Compact ? (
+                <>
+                  <MessageBase>
+                    <CompactPlaceholder key={getItems().length} />
+                  </MessageBase>
+                  <MessageBase>
+                    <CompactPlaceholder key={getItems().length} />
+                  </MessageBase>
+                  <MessageBase>
+                    <CompactPlaceholder key={getItems().length} />
+                  </MessageBase>
+                  <MessageBase>
+                    <CompactPlaceholder key={getItems().length} />
+                  </MessageBase>
+                  <MessageBase ref={observeBackAnchor}>
+                    <CompactPlaceholder key={getItems().length} />
+                  </MessageBase>
+                </>
+              ) : (
+                <>
+                  <MessageBase>
+                    <DefaultPlaceholder key={getItems().length} />
+                  </MessageBase>
+                  <MessageBase>
+                    <DefaultPlaceholder key={getItems().length} />
+                  </MessageBase>
+                  <MessageBase ref={observeBackAnchor}>
+                    <DefaultPlaceholder key={getItems().length} />
+                  </MessageBase>
+                </>
+              ))}
+
+            {getItems().map(eventRenderer)}
+
+            {(!liveTimelineLinked || !rangeAtEnd) &&
+              (messageLayout === MessageLayout.Compact ? (
+                <>
+                  <MessageBase ref={observeFrontAnchor}>
+                    <CompactPlaceholder key={getItems().length} />
+                  </MessageBase>
+                  <MessageBase>
+                    <CompactPlaceholder key={getItems().length} />
+                  </MessageBase>
+                  <MessageBase>
+                    <CompactPlaceholder key={getItems().length} />
+                  </MessageBase>
+                  <MessageBase>
+                    <CompactPlaceholder key={getItems().length} />
+                  </MessageBase>
+                  <MessageBase>
+                    <CompactPlaceholder key={getItems().length} />
+                  </MessageBase>
+                </>
+              ) : (
+                <>
+                  <MessageBase ref={observeFrontAnchor}>
+                    <DefaultPlaceholder key={getItems().length} />
+                  </MessageBase>
+                  <MessageBase>
+                    <DefaultPlaceholder key={getItems().length} />
+                  </MessageBase>
+                  <MessageBase>
+                    <DefaultPlaceholder key={getItems().length} />
+                  </MessageBase>
+                </>
+              ))}
+            <span ref={atBottomAnchorRef} />
+          </Box>
+        </Scroll>
+        <AnimatePresence>
+          {!atBottom && (
+            <motion.div
+              key="jump-to-latest"
+              initial={{ opacity: 0, x: '-50%', y: reduceMotion ? 0 : 8 }}
+              animate={{ opacity: 1, x: '-50%', y: 0 }}
+              exit={{ opacity: 0, x: '-50%', y: reduceMotion ? 0 : 8 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                bottom: config.space.S400,
+                zIndex: 1,
+                minWidth: 'max-content',
+              }}
+            >
+              <Chip
+                variant="SurfaceVariant"
+                radii="Pill"
+                outlined
+                before={<Icon size="50" src={Icons.ArrowBottom} />}
+                onClick={handleJumpToLatest}
+              >
+                <Text size="L400">Jump to Latest</Text>
+              </Chip>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Box>
     </VoiceMessageQueueProvider>
   );

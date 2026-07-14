@@ -26,6 +26,8 @@ import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { useSelectedRoom } from '../../hooks/router/useSelectedRoom';
 import { useInboxNotificationsSelected } from '../../hooks/router/useInbox';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
+import { themeGroupAtom } from '../../state/room/roomStyles';
+import { getDefaultStyle } from '../../utils/chatStyle';
 
 function SystemEmojiFeature() {
   const [twitterEmoji] = useSetting(settingsAtom, 'twitterEmoji');
@@ -51,15 +53,39 @@ function PageZoomFeature() {
   return null;
 }
 
+// Keep decoded background images referenced so the browser holds them in its
+// memory cache — otherwise opening a room waits ~a second while the default
+// chat wallpaper is fetched/decoded before first paint.
+const warmedBackgrounds = new Map<string, HTMLImageElement>();
+
+function ChatBackgroundPreloader() {
+  const themeGroup = useAtomValue(themeGroupAtom);
+
+  useEffect(() => {
+    const { bgImage, bgPlain } = getDefaultStyle(themeGroup);
+    if (!bgImage || bgPlain || warmedBackgrounds.has(bgImage)) return;
+    const img = new Image();
+    img.src = bgImage;
+    // decode() pre-rasterizes off the critical path; ignore failures — this
+    // is purely a warm-up, RoomView loads the image itself either way.
+    img.decode?.().catch(() => undefined);
+    warmedBackgrounds.set(bgImage, img);
+  }, [themeGroup]);
+
+  return null;
+}
+
 function FaviconUpdater() {
   const roomToUnread = useAtomValue(roomToUnreadAtom);
 
   useEffect(() => {
     let notification = false;
     let highlight = false;
+    let total = 0;
     roomToUnread.forEach((unread) => {
       if (unread.total > 0) {
         notification = true;
+        total += unread.total;
       }
       if (unread.highlight > 0) {
         highlight = true;
@@ -71,6 +97,12 @@ function FaviconUpdater() {
     } else {
       setFavicon(LogoSVG);
     }
+
+    // Mirror the unread count onto the installed-app icon (Badging API —
+    // iOS 16.4+ home-screen web apps, desktop PWAs). On iOS the badge only
+    // renders once notification permission is granted; the call itself is
+    // always safe.
+    navigator.setAppBadge?.(total).catch(() => undefined);
   }, [roomToUnread]);
 
   return null;
@@ -262,6 +294,7 @@ export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
     <>
       <SystemEmojiFeature />
       <PageZoomFeature />
+      <ChatBackgroundPreloader />
       <FaviconUpdater />
       <InviteNotifications />
       <MessageNotifications />

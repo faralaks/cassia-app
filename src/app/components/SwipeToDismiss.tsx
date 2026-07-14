@@ -30,7 +30,16 @@ export function SwipeToDismiss({ onDismiss, children }: SwipeToDismissProps) {
 
   return (
     <motion.div
-      style={{ display: 'flex' }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100%',
+        height: '100%',
+        minHeight: 0,
+        // Mark as a gesture surface so the page touchmove-guard lets the drag
+        // through and the browser doesn't hijack the vertical gesture.
+        touchAction: 'pan-y',
+      }}
       drag="y"
       dragDirectionLock
       dragConstraints={{ top: 0, bottom: 0 }}

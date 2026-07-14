@@ -18,12 +18,22 @@ import { themeGroupAtom } from '../state/room/roomStyles';
 // themed <body> and push it into <meta name="theme-color"> so the mobile
 // browser/OS chrome (iOS status bar, Android address bar) matches the app
 // instead of flashing white.
-const themeColorVarName = color.Background.Container.replace(/^var\(/, '').replace(/\)$/, '').trim();
+const themeColorVarName = color.Background.Container.replace(/^var\(/, '')
+  .replace(/\)$/, '')
+  .trim();
 const syncThemeColorMeta = () => {
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (!meta) return;
   const value = getComputedStyle(document.body).getPropertyValue(themeColorVarName).trim();
-  if (value) meta.setAttribute('content', value);
+  if (!value) return;
+  // Both scheme-qualified metas (see index.html) get the active in-app theme
+  // color — the app theme wins over the OS scheme wherever the browser
+  // honors live updates.
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute('content', value);
+  });
+  // Paint the <html> canvas too: any screen area the app doesn't cover (e.g.
+  // around the status bar / keyboard band) shows the <html> background —
+  // without this it stays white regardless of theme.
+  document.documentElement.style.backgroundColor = value;
 };
 
 export function UnAuthRouteThemeManager() {
