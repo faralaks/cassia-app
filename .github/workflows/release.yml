@@ -185,3 +185,31 @@ jobs:
           # --name overrides the Worker name so stable → cassia-app and
           # pre-release → cassia-dev share one config but different Workers.
           command: deploy --name ${{ steps.target.outputs.name }}
+
+  # ── Announce the finished rollout to Matrix (via a bot webhook) ─────────────
+  # Runs only after BOTH the ghcr image and the Cloudflare deployment succeed.
+  # Needs three repository secrets (all secret so the notification target isn't
+  # discoverable from this public workflow):
+  #   MATRIX_BOT_URL     — full endpoint URL (https://.../send/room)
+  #   MATRIX_BOT_API_KEY — an X-Api-Key the bot accepts
+  #   MATRIX_BOT_ROOM    — target room alias (e.g. #rollouts)
+  notify:
+    needs: [docker, cloudflare]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send deployment message
+        env:
+          MATRIX_BOT_URL: ${{ secrets.MATRIX_BOT_URL }}
+          MATRIX_BOT_API_KEY: ${{ secrets.MATRIX_BOT_API_KEY }}
+          MATRIX_BOT_ROOM: ${{ secrets.MATRIX_BOT_ROOM }}
+        run: |
+          tag="${{ github.ref_name }}"
+          # Same rule as the Cloudflare target: -suffix = pre-release = dev.
+          if [[ "$tag" == *-* ]]; then target="cassia-dev"; else target="cassia"; fi
+          # --form-string, never -F: curl's -F treats a leading '<' as
+          # "read this file", which would mangle the HTML payload.
+          curl -sf -X POST "$MATRIX_BOT_URL" \
+            -H "X-Api-Key: $MATRIX_BOT_API_KEY" \
+            --form-string "room_id=$MATRIX_BOT_ROOM" \
+            --form-string "message=$target@$tag deployed!" \
+            --form-string "html=$target@<strong>$tag</strong> deployed!"
